@@ -102,13 +102,13 @@ Definition three_times' x := three_times x.
     improve readability and serve as good documentation.
 
     We define recursive functions using the [Fixpoint] command. For
-    instance, here is a function that computes the number of elements
-    stored in a tree: *)
+    instance, here is a function [tsize] that computes the number of
+    elements stored in a tree: *)
 
-Fixpoint tree_size (t : tree) : nat :=
+Fixpoint tsize (t : tree) : nat :=
   match t with
   | Leaf => 0
-  | Node _ t1 _ t2 => tree_size t1 + 1 + tree_size t2
+  | Node _ t1 _ t2 => tsize t1 + 1 + tsize t2
   end.
 
 (** The type [nat] type is the type of natural numbers -- that is, all
@@ -117,8 +117,15 @@ Fixpoint tree_size (t : tree) : nat :=
     multiplication, subtraction, etc. Natural numbers are used
     extensively in Coq developments.
 
+    Here is another recursive function: one for mirroring the tree. *)
 
-    * Proof by simplification
+Fixpoint tmirror (t : tree) : tree :=
+  match t with
+  | Leaf => Leaf
+  | Node c t1 x t2 => Node c (tmirror t1) x (tmirror t2)
+  end.
+
+(** * Proof by simplification
 
     After writing simple programs in Coq's functional language, let's
     turn our attention to stating and proving properties about these
@@ -126,11 +133,11 @@ Fixpoint tree_size (t : tree) : nat :=
     has size [1] for all possible values of [x]. In Coq, this is done
     with the [Lemma] command: *)
 
-Lemma tree_size1 (x : T) : tree_size (singleton x) = 1.
+Lemma tsize1 (x : T) : tsize (singleton x) = 1.
 
 (** By issuing this commmand, we declare that we want to prove a lemma
-    called [tree_size1], whose statement is a direct translation of
-    the above claim. This causes Coq to enter _proof mode_, where it
+    called [tsize1], whose statement is a direct translation of the
+    above claim. This causes Coq to enter _proof mode_, where it
     expects us to provide a proof for that statement. We can now see a
     new window which displays the current state of our proof. This
     window is split by a horizontal line. Below that line is the
@@ -153,10 +160,10 @@ Proof.
 
 rewrite /=.
 
-(** We can see that [rewrite /=] replaced [tree_size (singleton x) =
-    1] by [0 + 1 + 0 = 1]. At this point, the statement is obvious
-    enough that Coq can accept that it is true without further
-    help. We can complete the proof with the [done] tactic: *)
+(** We can see that [rewrite /=] replaced [tsize (singleton x) = 1] by
+    [0 + 1 + 0 = 1]. At this point, the statement is obvious enough
+    that Coq can accept that it is true without further help. We can
+    complete the proof with the [done] tactic: *)
 
 done.
 
@@ -166,16 +173,19 @@ done.
 
 Qed.
 
-(** We can now refer to the theorem we just proved by its name: *)
+(** We can now refer to the theorem we just proved by its name. The
+    [forall] annotation given in the statement of the checked lemma
+    means (as you may guess) that [x] is universally quantified and
+    may be instantiated arbitrarily. *)
 
-Check tree_size1.
+Check tsize1.
 
 (** Calling [done] after a tactic is so common that ssreflect offers
     special syntax for it: if [t] is a tactic, then [by t] tries to
     execute [t] and to conclude the proof afterwards by calling
     [done]. If the proof cannot be complete, Coq raises an error. *)
 
-Lemma tree_size1' (x : T) : tree_size (singleton x) = 1.
+Lemma tsize1' (x : T) : tsize (singleton x) = 1.
 Proof. by rewrite /=. Qed.
 
 (** As a matter of fact, the above proof is so simple that we don't
@@ -183,28 +193,115 @@ Proof. by rewrite /=. Qed.
     suffices. Alternatively, we can also write [by []] (that is, [by]
     with an "empty" first tactic) as a synonym of [done]: *)
 
-Lemma tree_size1'' (x : T) : tree_size (singleton x) = 1.
+Lemma tsize1'' (x : T) : tsize (singleton x) = 1.
 Proof. done. Qed.
 
-Lemma tree_size1''' (x : T) : tree_size (singleton x) = 1.
+Lemma tsize1''' (x : T) : tsize (singleton x) = 1.
 Proof. by []. Qed.
 
 (** Before we move on to more interesting proofs, it is worth leaving
     a small note on naming conventions: ssreflect tries to follow very
     consistent naming conventions for its lemmas, which we will try to
-    emulate here. The [1] suffix on [tree_size1], for instance,
-    signals that this lemma relates [tree_size] to something of size
-    [1]; in this case, a singleton tree. We will point to other naming
-    conventions as we progress.
+    emulate here. The [1] suffix on [tsize1], for instance, signals
+    that this lemma relates [tsize] to something of size [1]; in this
+    case, a singleton tree. We will point to other naming conventions
+    as we progress.
 
 
     * Proof by case analysis
 
     Often, simplification is not enough to complete a proof. For
-    instance, suppose that we have the following function [tree_color]
-    which computes the color of the root of a tree *)
+    instance, suppose that we have the following function [tcolor]
+    which computes the color of the root of a tree (by convention,
+    empty trees are colored black): *)
 
+Definition tcolor (t : tree) : color :=
+  match t with
+  | Leaf => Black
+  | Node c _ _ _ => c
+  end.
 
+(** Clearly, the [tmirror] function defined above does not change the
+    color of the tree it is applied to. Let's try to convince Coq of
+    this fact: *)
+
+Lemma tcolor_tmirror (t : tree) : tcolor (tmirror t) = tcolor t.
+Proof.
+
+(** We can try to simplify the goal, but Coq won't be able to make any
+    progress. We can also try to use [done], to see if Coq accepts
+    this fact on its own, but it raises an error instead: *)
+
+rewrite /=. (* Nothing happens... *)
+(* done. *) (* Cannot finish the proof. *)
+
+(** The reason why simplification worked on the previous example, but
+    cannot make any progress here, is that Coq knew exactly what shape
+    the result of [singleton] has, because its definition started with
+    a [Node] constructor. In the current lemma, however, we are trying
+    to prove something about an _arbitrary_ tree [t], without any
+    further information about what [t] is. What we need is a way to
+    consider all possible forms that [t] can have, which we can
+    accomplish with the [case] tactic: *)
+
+case: t.
+
+(** The [case: t] call instructs Coq to do a proof by cases. The proof
+    state now shows that we need to complete two subgoals: one where
+    [t] is replaced by [Leaf], and another one where it is replaced by
+    a tree that starts with the [Node] constructor. We can proceed by
+    proving each of the subgoals in sequence. Following the ssreflect
+    convention, we indent the proof of the first subgoal by two
+    spaces. Its proof follows by simplification. *)
+
+  rewrite /=.
+  by [].
+
+(** The second subgoal looks a little bit different: besides not
+    mentioning [t] anymore, our goal now contains additional
+    universally quantified variables, the arguments to the [Node]
+    constructor. We can introduce these variables, bringing them from
+    the goal into the context by using the [move]: *)
+
+move=> c t1 x t2.
+
+(** Each name given after the [=>] operator is used to name one
+    universally quantified variable present in the goal. We can now
+    simplify our goal as before and conclude. *)
+
+rewrite /=.
+by [].
+Qed.
+
+(** Ssreflect allows us to combine some of these steps into a single
+    tactic. For instance, we can use [case] to name all constructor
+    arguments and perform a simplification automatically, like this: *)
+
+Lemma tcolor_tmirror' (t : tree) : tcolor (tmirror t) = tcolor t.
+Proof.
+case: t => [|c t1 x t2] /=.
+
+(** The pattern enclosed by square brackets in the above tactic names
+    the arguments resulting from each constructor of [tree]. In the
+    general case, each group of variables separated by [|] corresponds
+    to one constructor. Since the [Leaf] constructor doesn't take any
+    arguments, its corresponding part in the pattern doesn't contain
+    any variables.
+
+    The [/=] symbol tells Coq to attempt to simplify the goal _after_
+    doing case analysis on [t]. We can see that the resulting goals
+    can be solved immediately: *)
+
+  by [].
+by [].
+Qed.
+
+(** As a matter of fact, we didn't even have to name the constructor
+    arguments, since the [done] tactic is smart enough to do this by
+    itself. *)
+
+Lemma tcolor_tmirror'' (t : tree) : tcolor (tmirror t) = tcolor t.
+Proof. by case: t. Qed.
 
 
 (*lists all elements stored in a tree from left to
