@@ -303,6 +303,60 @@ Qed.
 Lemma tcolor_tmirror'' (t : tree) : tcolor (tmirror t) = tcolor t.
 Proof. by case: t. Qed.
 
+(** Of course, in many cases we _do_ have to perform non-trivial
+    reasoning steps after calling [case]. We will encounter many
+    examples of such proofs as we make progress.
+
+
+    * Proof by rewriting
+
+    So far, we have done simple proofs showing that certain equations
+    between two expressions hold. We can also use these equations in
+    other proofs to show more results. This process is known as
+    _rewriting_.
+
+    The [rewrite] tactic can be used not only with the [/=] symbol,
+    which performs simplification by computation, but also with any
+    previously proved equation. As a simple example, we can try to
+    prove the following variant of [tcolor_tmirror]: *)
+
+Lemma tcolor_tmirror2 (t : tree) : tcolor (tmirror (tmirror t)) = tcolor t.
+Proof.
+
+(** This result is simple enough that a single call to [case] would
+    suffice to solve it, as in [tcolor_tmirror]. However, we can take
+    a slightly different approach, using [tcolor_tmirror] instead to
+    rewrite on the left-hand side of the equation. *)
+
+rewrite tcolor_tmirror.
+rewrite tcolor_tmirror.
+by [].
+Qed.
+
+(** As we can see, each call to [rewrite] instantiated the
+    [tcolor_tmirror] lemma with a different tree value, successively
+    removing calls to [tmirror]. In the first rewrite, the tree value
+    was instantiated to [tmirror t], while in the second one, it was
+    instantiated with [t] itself. Coq performs unification to find out
+    how to instantiate each lemma given to [rewrite], but we can also
+    explicitly instantiate our lemma by passing the value we want to
+    use as an argument to the theorem. This is useful when there are
+    multiple possible instantiations and Coq doesn't choose the one we
+    want by itself. *)
+
+Lemma tcolor_tmirror2' t : tcolor (tmirror (tmirror t)) = tcolor t.
+Proof.
+rewrite (tcolor_tmirror (tmirror t)).
+rewrite (tcolor_tmirror t).
+by [].
+Qed.
+
+(** It is also possible to perform several rewrite steps at once: *)
+
+Lemma tcolor_tmirror2'' t : tcolor (tmirror (tmirror t)) = tcolor t.
+Proof.
+by rewrite tcolor_tmirror tcolor_tmirror.
+Qed.
 
 (*lists all elements stored in a tree from left to
     right: *)
