@@ -354,9 +354,108 @@ Qed.
 (** It is also possible to perform several rewrite steps at once: *)
 
 Lemma tcolor_tmirror2'' t : tcolor (tmirror (tmirror t)) = tcolor t.
+Proof. by rewrite tcolor_tmirror tcolor_tmirror. Qed.
+
+(** Alternatively, we can use the [!] flag to rewrite with a lemma as
+    many times as possible: *)
+
+Lemma tcolor_tmirror2''' t : tcolor (tmirror (tmirror t)) = tcolor t.
+Proof. by rewrite !tcolor_tmirror. Qed.
+
+(** * Proof by induction
+
+    Coq is not smart enough to come up with its own inductive
+    proofs. These are done with the [elim] tactic.
+
+    At its simplest form, [elim] is just a more powerful version of
+    [case] that generates induction hypothesis for structurally
+    smaller terms. Here's an example. Suppose that we wanted to show
+    that [tmirror] is its own inverse. *)
+
+Lemma tmirrorK t : tmirror (tmirror t) = t.
 Proof.
-by rewrite tcolor_tmirror tcolor_tmirror.
+
+(** The [K] suffix in the name of this lemma stands for
+    "cancellation", and is a convention used by ssreflect to name
+    similar results.
+
+    As with [case], when we call [elim: t], we get to provide names
+    for the arguments of each constructor. The difference is that
+    every recursive argument also generates an induction hypothesis,
+    saying that the result we are trying to prove is valid for that
+    argument. Thus, in the tactic below, [IH1] and [IH2] stand for the
+    induction hypotheses that correspond to [t1] and [t2]. Notice that
+    we use the [/=] flag to simplify both subgoals. *)
+
+elim: t => [|c t1 IH1 x t2 IH2] /=.
+
+(** The first subgoal corresponds to the [t = Leaf] case, and can be
+    solved by Coq automatically. *)
+
+  by [].
+
+(** When attacking the second subgoal, where [t] has the form [Node c
+    t1 x t2], we can see that our context looks a bit
+    different. Besides the usual arguments, it also contains the
+    induction hypotheses [IH1] and [IH2], which state that [tmirror
+    (tmirror t1) = t1] and [tmirror (tmirror t2) = t2]. To conclude
+    this subgoal, we can rewrite with these hypotheses, as if they
+    were normal lemmas: *)
+
+rewrite IH1 IH2.
+
+(** Now, both sides of the equation are equal, and Coq accepts our proof. *)
+
+by [].
 Qed.
+
+(** Ssreflect provides nice syntax for simplifying this proof. Since
+    many cases in a proof follow directly by simplification, we can
+    use the [//] flag with [elim] to tell Coq to try to close all
+    goals it can with the [done] tactic. *)
+
+Lemma tmirrorK' t : tmirror (tmirror t) = t.
+Proof.
+elim: t => [|c t1 IH1 x t2 IH2] // /=.
+by rewrite IH1 IH2.
+Qed.
+
+(** Both [//] and [/=] can be combined in a single flag, [//=]. *)
+
+Lemma tmirrorK'' t : tmirror (tmirror t) = t.
+Proof.
+elim: t => [|c t1 IH1 x t2 IH2] //=.
+by rewrite IH1 IH2.
+Qed.
+
+(** We can further condense this proof by performing some of the
+    rewriting steps directly after calling [elim]. When [->] is given
+    as a name for a hypothesis, this tells Coq to try to rewrite with
+    that hypothesis. This leads to the following proof: *)
+
+Lemma tmirrorK''' t : tmirror (tmirror t) = t.
+Proof. by elim: t => [|/= c t1 -> x t2 ->]. Qed.
+
+(** Notice that, before rewriting with the induction hypotheses in the
+    [Node] branch, we perform a simplification step with [/=], so that
+    Coq can find the terms [tmirror (tmirror t1)] and [tmirror
+    (tmirror t2)] in the goal.
+
+
+    * Propositions are first-class values
+
+    One interesting aspect of Coq's theory is that propositions are
+    first-class values that can be manipulated according to the same
+    rules that are used other objects of the language. In particular,
+    we can define functions that return propositions, allowing us to
+    develop convenient abbreviations for common patterns. *)
+
+
+(** Cancellation lemmas such as the one above are common enough that
+    ssreflect provides convenient definitions for talking about
+    them. [cancel f g] is defined as *)
+
+
 
 (*lists all elements stored in a tree from left to
     right: *)
