@@ -446,19 +446,139 @@ Proof. by elim: t => [|/= c t1 -> x t2 ->]. Qed.
 
     One interesting aspect of Coq's theory is that propositions are
     first-class values that can be manipulated according to the same
-    rules that are used other objects of the language. In particular,
-    we can define functions that return propositions, allowing us to
-    develop convenient abbreviations for common patterns. *)
+    rules that are used for other objects of the language. In
+    particular, since Coq is a _typed_ language, all propositions have
+    a type: [Prop]. For instance: *)
 
+Check 1 = 1.
 
-(** Cancellation lemmas such as the one above are common enough that
-    ssreflect provides convenient definitions for talking about
-    them. [cancel f g] is defined as *)
+(** Note that being a syntatically well-formed proposition does not
+    imply that this proposition is true. Hence, [0 = 1] also has type
+    [Prop], even though it corresponds to a false claim. *)
 
+Check 0 = 1.
 
+(** Coq comes with a rich language for writing propositions. So far,
+    we have encountered the equality operator [=], and universal
+    quantification [forall], but there are many more. We will
+    introduce more of them as we go along.
 
-(*lists all elements stored in a tree from left to
-    right: *)
+    We can define functions that return propositions, allowing us to
+    develop convenient abbreviations for common patterns.
+
+    As an example, we can define a function [cancel] that takes in two
+    functions [f] and [g] as arguments, and states that [g] is the
+    left inverse of [f]. Since [cancel] is already provided by
+    ssreflect, we restate the definition here with a different name,
+    to avoid clashes. *)
+
+Definition cancel' (S R : Type) (f : S -> R) (g : R -> S) : Prop :=
+  forall x : S, g (f x) = x.
+
+(** Notice that the [S] and [R] types are explicitly given as
+    arguments to [cancel]. However, because of the "implicit
+    arguments" option we enabled at the beginning of the file, we
+    don't have to provide them most of the time. For instance: *)
+
+Lemma tmirrorK'''' : cancel tmirror tmirror.
+Proof.
+
+(** To understand what's going on, it is sometimes useful to unfold
+    the definition of [cancel]. Simplification by default does not
+    perform this kind of unfolding, because it would create bigger and
+    harder-to-understand proof contexts. To unfold a term [foo], we
+    use the [/foo] rewrite flag. For instance (even though it won't
+    affect the rest of the proof): *)
+
+rewrite /cancel.
+
+(** Since [cancel] has an explicitly quantified variable [x] in its
+    definition, we need to bring it into the context, much like we did
+    after doing case analysis. Of course, we can give [x] any name we
+    like: *)
+
+move=> t.
+by elim: t => [|/= c t1 -> x t2 ->].
+Qed.
+
+(** In situations like this, where we want our tactic to act on the
+    first quantified value on the goal, we can just call that tactic
+    directly, without having to introduce that value directly. In
+    other words, tactics such as [case] and [elim] always act
+    implicitly on the first universally quantified value in our goal,
+    in stack-like fashion. *)
+
+Lemma tmirrorK''''' : involutive tmirror.
+Proof. by elim=> [|/= c t1 -> x t2 ->]. Qed.
+
+(** Notice that we have used [involutive tmirror] instead of [tcancel
+    tmirror tmirror]. [involutive foo] is defined exactly as [cancel
+    foo foo].
+
+    The reason we wrote [: t] on previous calls to [elim] is simple:
+    the [:] is actually a tactic operator, whose effect is to put some
+    variables in the context back in the goal. In this sense, it is
+    the inverse of the [=>] introduction operator. For instance: *)
+
+Lemma tmirrorK'''''' : involutive tmirror.
+Proof.
+move=> t.
+move: t.
+Abort.
+
+(** * Using previous results
+
+    Coq and ssreflect come with many definitions and lemmas about
+    them. In order to make effective use of Coq, it is important to
+    know how to reuse this infrastructure. Here is a simple
+    example. Suppose that we wanted to prove that mirroring a tree
+    does not change its size. *)
+
+Lemma tsize_tmirror t : tsize (tmirror t) = tsize t.
+Proof.
+
+(** We could try to prove this by induction: *)
+
+elim: t => [|/= c t1 -> x t2 ->] //.
+
+(** Here, we see that Coq was able to discharge the base case by
+    itself, with [//]. However, it was not able to get rid of the
+    second one. Indeed, we can see that the order of the summands on
+    both sides is different:
+
+    [tsize t2 + 1 + tsize t1 = tsize t1 + 1 + tsize t2]
+
+    Unfortunately, ssreflect's [done] tactic does not perform this
+    kind of arithmetic reasoning by itself, and we must find previous
+    results that will allow us to show that these two terms are
+    equal. Coq comes with a [SearchAbout] command that can be used for
+    looking up lemmas that mention certain definitions. In this case,
+    we want to be able to argue about commutativity and associativity
+    of [+]. As it turns out, ssreflect already these notions for us: *)
+
+Print commutative. (* [C-c C-a C-p] in Proof General *)
+Print associative.
+
+(** We can then try to use [SearchAbout] to find lemmas that may help
+    us here. *)
+
+SearchAbout "+" commutative. (* [C-c C-a C-a] in Proof General *)
+SearchAbout "+" associative.
+
+(** Running these commands shows us that there are two lemmas, [addnC]
+    and [addnA], that we can use. You will notice that both lemmas
+    mention a function [addn] instead of the [+] operator. Coq comes
+    with a notation mechanism for changing the syntax of certain
+    constructs. Thus, natural number addition is actually defined as a
+    function [addn], and only later we issue a [Notation] command for
+    using the nice infix syntax. Notice also that we had to enclose
+    [+] in quotes so that Coq can understand that we are referring to
+    a notation as opposed to a normal identifier. We will not discuss
+    the details of the [Notation] command right now, though, as it is
+    a bit complicated to explain. *)
+
+by rewrite addnC (addnC _ 1) addnA.
+Qed.
 
 Fixpoint tree_elems (t : tree) : seq T :=
   match t with
