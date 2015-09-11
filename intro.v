@@ -266,12 +266,60 @@ Qed.
 
 Check tsize1.
 
+(** To better understand how simplification is performed, we can write
+    a step-by-step version of the previous proof, showing intermediate
+    simplification steps that are omitted by Coq. *)
+
+Lemma tsize1' (x : T) : tsize (singleton x) = 1.
+Proof.
+
+(** Writing [rewrite -[x]/(y)] instructs Coq to replace all
+    occurrences of [x] by [y] in the current goal, provided that both
+    expressions are equivalent according to the computation rules of
+    Coq's logic. In the line below, Coq understands that both terms
+    are equal because the second is exactly what we gave for the
+    definition of [singleton]. *)
+
+rewrite -[singleton x]/(Node Red Leaf x Leaf).
+
+(** Here, we can see that [rewrite] is a more general tactic that
+    takes many possible actions as arguments, which have slightly
+    different effects.
+
+    We can perform a similar exercise for [tsize], and replace the
+    call to it by its definition. *)
+
+rewrite -[tsize _]/(match Node Red Leaf x Leaf with
+                    | Leaf => 0
+                    | Node _ t1 _ t2 => tsize t1 + 1 + tsize t2
+                    end).
+
+(** Notice that we didn't specify the argument that was given to
+    [tsize], and just said [_] instead. Coq can often understand these
+    incomplete patterns from the context where they are used.
+
+    Simplifying the [match] expression is easy: since Coq knows the
+    first constructor used in the discriminee, it knows which branch
+    to take. Here, we use the [LHS] (short for _left-hand side_)
+    pattern instead of writing the entire term. *)
+
+rewrite -[LHS]/(tsize Leaf + 1 + tsize Leaf).
+
+(** Similar simplification steps show that [tsize Leaf] evaluates to [0]. *)
+
+rewrite -[tsize Leaf]/(0).
+
+(** At this point, we can conclude. *)
+
+done.
+Qed.
+
 (** Calling [done] after a tactic is so common that ssreflect offers
     special syntax for it: if [t] is a tactic, then [by t] tries to
     execute [t] and to conclude the proof afterwards by calling
     [done]. If the proof cannot be complete, Coq raises an error. *)
 
-Lemma tsize1' (x : T) : tsize (singleton x) = 1.
+Lemma tsize1'' (x : T) : tsize (singleton x) = 1.
 Proof. by rewrite /=. Qed.
 
 (** As a matter of fact, the above proof is so simple that we don't
@@ -279,10 +327,10 @@ Proof. by rewrite /=. Qed.
     suffices. Alternatively, we can also write [by []] (that is, [by]
     with an "empty" first tactic) as a synonym of [done]: *)
 
-Lemma tsize1'' (x : T) : tsize (singleton x) = 1.
+Lemma tsize1''' (x : T) : tsize (singleton x) = 1.
 Proof. done. Qed.
 
-Lemma tsize1''' (x : T) : tsize (singleton x) = 1.
+Lemma tsize1'''' (x : T) : tsize (singleton x) = 1.
 Proof. by []. Qed.
 
 (** Before we move on to more interesting proofs, it is worth leaving
