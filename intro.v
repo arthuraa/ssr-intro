@@ -1,3 +1,61 @@
+(** * Introduction
+
+    Programming is a hard task, and writing correct programs is even
+    harder, as any person having tried to write one can attest. A few
+    factors contribute to this state of affairs.
+
+    First, in order to write a correct program, we must first
+    understand what "correct" means -- that is, what a particular
+    program is supposed to do. Unfortunately, interesting programs
+    have complex specifications, which are almost never stated
+    completely. If we don't have a clear idea of what the purpose of a
+    program is, it is less likely that we will be able to write a
+    correct implementation.
+
+    Second, even with a complete, precise specification in hand, it is
+    not easy to see whether an implementation conforms to
+    it. Programmers convince themselves of this by using the program
+    in controlled trials, by running extensive testing, or with tool
+    support. These techniques can lead to a dramatic increase in
+    software quality, but often fail to detect subtle mistakes that
+    end up appearing after the program is deployed.
+
+    Many tools and methodologies have been introduced to try to solve
+    these two problems. Among those, we can mention a particularly
+    interesting class: _proof assistants_. Proof assistants allow
+    programmers to write spefications and connect them to programs via
+    _machine-checked proofs_. If a programmer can formulate a
+    logically sound argument for why their program is correct, the
+    proof assistant will agree and tell them so. Otherwise, if the
+    argument contains any flaws, the proof assistant will notice it
+    and report to the programmer.
+
+    This document is an introduction to Coq, a powerful proof
+    assistant. Coq comes with a rich language for writing programs,
+    specifications, and mathematical concepts, and connecting them
+    with formal proofs. Coq has been successfully applied to the
+    verification of complex programs, including compilers and
+    operating systems, and also used to formalize important
+    mathematical results, such as the four-color theorem or the
+    odd-order theorem.
+
+    Coq is a complex system that includes many features, and the Coq
+    community has developed many styles for using it. In this
+    introduction, we will focus on _ssreflect_, a Coq library that has
+    its own set of best practices.
+
+
+    * First steps
+
+    Most of the time, Coq is used interactively within a specialized
+    programming environment: while the user is working on a Coq
+    development, the system is giving feedback on what definitions and
+    proofs are acceted or rejected, which results can be used to prove
+    a certain claim, etc. The most widely used environments for
+    interacting with Coq are _CoqIDE_, a stand-alone editor that is
+    part of the official Coq distribution, and _Proof General_, an
+    Emacs plugin. *)
+
 Require Import Ssreflect.ssreflect Ssreflect.ssrfun Ssreflect.ssrbool.
 Require Import Ssreflect.ssrnat Ssreflect.eqtype Ssreflect.seq.
 
