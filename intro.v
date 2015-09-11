@@ -47,30 +47,58 @@
 
     * First steps
 
-    Most of the time, Coq is used interactively within a specialized
-    programming environment: while the user is working on a Coq
-    development, the system is giving feedback on what definitions and
-    proofs are acceted or rejected, which results can be used to prove
-    a certain claim, etc. The most widely used environments for
-    interacting with Coq are _CoqIDE_, a stand-alone editor that is
-    part of the official Coq distribution, and _Proof General_, an
-    Emacs plugin. *)
+    Users write Coq code interactively within specialized programming
+    environments. Among those, the most widely used are _CoqIDE_, a
+    stand-alone editor that is part of the official Coq distribution,
+    and _Proof General_, an Emacs plugin. We will assume that you have
+    access to such an environment for running examples and doing
+    exercises. To test whether your environment is working, try
+    opening this file and hitting the "Next Step" button on the menu
+    bar; your environment should change, telling you that it started
+    Coq and highlight a region of the file.
+
+    This highlighted region indicates what part of the file has been
+    processed and accepted by Coq so far. We can use the "Next Step"
+    command to tell Coq to try to advance to the next code fragment;
+    in Proof General, this is done with the [C-c C-n] key combination,
+    or by pressing the corresponding button on the top bar. We can
+    also tell Coq to go back on the file, allowing us to edit parts of
+    the file that are currently highlighted. In Proof General, this is
+    done with the [C-n C-p] key combination. It is also possible to
+    try to jump to an arbitrary point in the file (in Proof General,
+    by placing the cursor at that point and hitting [C-n C-RET]), and
+    to ask Coq to check the entire file ([C-n C-b] in Proof
+    General). Try to play with these commands a little bit to
+    familiarize yourself with the environment.
+
+    The two lines that you see below import ssreflect libraries that
+    we use in this file. *)
 
 Require Import Ssreflect.ssreflect Ssreflect.ssrfun Ssreflect.ssrbool.
 Require Import Ssreflect.ssrnat Ssreflect.eqtype Ssreflect.seq.
 
-(** These commands turn on options that make programming in Coq a bit
-    easier; it is usually a good idea to include those at the
+(** (If you encounter warning messages when importing these files,
+    don't worry: they are probably harmless. Ssreflect redefines some
+    of the basic Coq definitions, which sometimes causes Coq to print
+    warnings.)
+
+    The next commands turn on options that make programming in Coq a
+    bit easier; it is usually a good idea to include those at the
     beginning of your files. The first two allow us to omit arguments
     that can be automatically inferred by Coq (usually, type
     parameters for polymorphic functions); the last one instructs
-    Coq's printer to omit these arguments when printing terms. *)
+    Coq's printer to omit these arguments when printing terms. If this
+    sounds a bit mysterious to you, don't worry -- you don't need to
+    understand what they do right now. We will come back to them
+    later. *)
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-(** As a first example, we will use Coq to implement and verify
+(** * Our first Coq definitions
+
+    As a first example, we will use Coq to implement and verify
     red-black-tree operations for building an abstract data type of
     sets.
 
