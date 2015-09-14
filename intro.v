@@ -96,21 +96,14 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-(** * Our first Coq definitions
+(** * Defining simple data types
 
-    As a first example, we will use Coq to implement and verify
-    red-black-tree operations for building an abstract data type of
-    sets.
+    In this chapter, we will study how to use Coq to implement and
+    verify red-black-tree operations for building an abstract data
+    type of sets. We will begin by showing how to use Coq to define
+    simple data types.
 
-    To make our code simpler, we enclose our basic definitions in a
-    Coq section. The [Variable] command below declares a type variable
-    [T] that will be in scope throughout the entire [Def] section. *)
-
-Section Def.
-
-Variable T : Type.
-
-(** The [Inductive] command declares new data types; its syntax and
+    The [Inductive] command declares new data types; its syntax and
     meaning are similar to definitions of algebraic data types in
     languages such as Haskell and OCaml. Each declaration contains a
     list of values that specify how to form elements of that data
@@ -134,78 +127,160 @@ Check Black.
     Coq files, since they only make sense interactively; we add them
     here for explanation purposes. You can avoid writing [Check] when
     using Coq interactively by issuing the appropriate command in your
-    Coq environment. In ProofGeneral, for instance, you can hit [C-c
+    Coq environment. In Proof General, for instance, you can hit [C-c
     C-a C-c].
 
     Constructors of inductive data types can take arguments, which can
     include elements of the type being defined. The next declaration
-    defines a red-black tree data type. These are binary trees whose
-    internal nodes contain elements of [T] and are colored either
-    [Red] or [Black]. *)
+    defines a red-black tree data type for storing number values;
+    these are binary trees whose internal nodes are colored either
+    [Red] or [Black], and contain an element of [nat], a standard Coq
+    type representing natural numbers. *)
 
-Inductive tree : Type :=
+Inductive nat_tree : Type :=
+| NatLeaf
+| NatNode of color & nat_tree & nat & nat_tree.
+
+(** Let's analyze this declaration. [NatLeaf] is a constructor that
+    takes no arguments, as the [Red] and [Black] constructors of
+    [color]. [Node], on the other hand, takes four arguments: a
+    [color], a [nat_tree], a [nat], and another [nat_tree]. We can
+    check that Coq understands our new definitions: *)
+
+Check NatLeaf.
+Check NatNode.
+
+(** The arrows ([->]) indicate that [NatNode] expects arguments; each
+    type to the left of an arrow specifies the type of an argument to
+    [NatNode]. To use [NatNode], we must supply elements of matching
+    types by writing them in sequence after that constructor: *)
+
+Check (NatNode Red NatLeaf 0 NatLeaf).
+Check (NatNode Black (NatNode Red NatLeaf 0 NatLeaf) 1 NatLeaf).
+
+(** The first expression represents a tree of natural numbers that
+    contains a single element: the number [0]. Its root node is
+    colored [Red]. The second expression represents a tree of natural
+    numbers that contains two elements, [0] and [1]. The number [1] is
+    stored at the root of the tree, while [0] is stored on its left
+    child. The root of that tree is colored [Black], while the subtree
+    that stores [0] is colored [Red].
+
+    As in other functional programming languages, we can make our
+    definition more generic, by allowing our trees to store elements
+    of any type [T] that we want: *)
+
+Inductive tree (T : Type) : Type :=
 | Leaf
-| Node of color & tree & T & tree.
+| Node of color & tree T & T & tree T.
 
-(** [Leaf] is a constructor that takes no arguments, as the [Red] and
-    [Black] constructors of [color]. [Node], on the other hand, takes
-    four arguments: a [color], a [tree], a [T], and another
-    [tree]. The [of] and [&] symbols are part of ssreflect. Here is
-    what the previous declaration would look like in usual Coq syntax:
-    *)
+(** Now, when we check the types of [Leaf] and [Node], we see that
+    they are prefixed with a [forall], which allows us to choose what
+    type the contents of our tree should have. *)
 
-Inductive tree' : Type :=
-| Leaf' : tree'
-| Node' : color -> tree' -> T -> tree' -> tree'.
+Check Leaf.
+Check Node.
+
+(** One thing that makes Coq different from other functional languages
+    is that polymorphism is _explicit_: each use of a polymorphic
+    value must be annotated with the type we want to instantiate it
+    with, as if it were the argument to a function. For instance, this
+    is how we use [Leaf] to construct an empty [tree] of [nat]
+    elements: *)
+
+Check (Leaf nat).
+
+(** Providing these annotations can be cumbersome, so Coq provides a
+    shorthand. We can specify that the value of [T] should be inferred
+    every time [Leaf] is used. This feature is known as _implicit
+    arguments_. *)
+
+Arguments Leaf {T}.
+
+(** The curly braces around [T] in the above command declare that type
+    as being implicit. In some cases, type parameters can be deduced
+    from the type of the arguments of a term. For instance, the third
+    argument of the [Node] constructor has exactly the type that is
+    used as a parameter to [Node]. Hence, if we know the type of that
+    argument, we know what [T] should be. The [Set Implicit Arguments]
+    directive we used earlier instructs Coq to always declare such
+    arguments as implicit. This allows us to write expressions such as
+    the following: *)
+
+Check (Node Red Leaf 0 Leaf).
+Check (Node Black (Node Red Leaf 0 Leaf) 1 Leaf).
+
+(** We can also turn off implicit arguments temporarily by prefixing
+    an identifier with [@]. This is useful in situations where Coq
+    doesn't have enough information to determine what the value of
+    some type parameter should be. *)
+
+Check (@Node nat Red Leaf 0 (@Leaf nat)).
+
+(** Before we move on, a small comment: the [of] and [&] symbols are
+    part of ssreflect. Here is what the previous declaration would
+    look like in usual Coq syntax: *)
+
+Inductive tree' (T : Type) : Type :=
+| Leaf' : tree' T
+| Node' : color -> tree' T -> T -> tree' T -> tree' T.
 
 (** We have replaced the type and constructor names above to avoid
     clashes, but the two declarations are otherwise equivalent.
 
-    We can define other values and functions with the [Definition]
+
+    * Definitions
+
+    We can give names to values and functions with the [Definition]
     command. For instance: *)
 
-Definition singleton (x : T) : tree :=
+Definition singleton (T : Type) (x : T) : tree T :=
   Node Red Leaf x Leaf.
 
 (** The above declaration defines a function [singleton] that takes
-    one argument, an element [x] of [T]. Its result is a [tree]
-    consisting of one internal node colored [Red] that contains
-    [x]. As the example above shows, we apply a constructor to
-    arguments by writing them in order, separated by spaces (as in
-    Haskell). This is also the same syntax for function
-    application. For instance: *)
+    one argument, an element [x] of some type [T], which can be chosen
+    arbitrarily. Its result is a [tree T] consisting of one internal
+    node colored [Red] that contains [x]. We can see that this is
+    reflected in the type of [singleton]: *)
 
-Definition three_times (x : T) : tree :=
-  Node Red (singleton x) x (singleton x).
+Check singleton.
 
-(** Note that the above definitions have type annotations in them. We
-    usually don't have to supply them, since Coq can infer them most
-    of the time: *)
+(** The syntax for applying functions is the same as for data
+    constructors: *)
 
-Definition three_times' x := three_times x.
+Check (singleton 0).
 
-(** Nevertheless, it is often a good idea to do so, since it can
-    improve readability and serve as good documentation.
+(** Note that the above definition has type annotations in them. We
+    can usually omit some or all of them, since Coq can infer them
+    most of the time. Here, for instance, we don't annotate the result
+    type of [three_times], and omit the type of [T]: *)
+
+Definition three_times T (x : T) :=
+  Node Black (singleton x) x (singleton x).
+
+(** Nevertheless, it is often a good idea to include type annotations,
+    since they can improve readability and serve as good
+    documentation.
 
     We define recursive functions using the [Fixpoint] command. For
     instance, here is a function [tsize] that computes the number of
     elements stored in a tree: *)
 
-Fixpoint tsize (t : tree) : nat :=
+Fixpoint tsize T (t : tree T) : nat :=
   match t with
   | Leaf => 0
   | Node _ t1 _ t2 => tsize t1 + 1 + tsize t2
   end.
 
-(** The type [nat] type is the type of natural numbers -- that is, all
-    non-negative integers. The [ssrnat] library of ssreflect comes
-    with many predefined functions on them, including addition,
-    multiplication, subtraction, etc. Natural numbers are used
-    extensively in Coq developments.
+(** Notice that this definition uses the addition operation on natural
+    numbers, [+]. The [ssrnat] library of ssreflect comes with many
+    other predefined functions on [nat], including multiplication,
+    subtraction, etc. The [nat] type is used extensively in Coq
+    developments, and we will encounter it often.
 
-    Here is another recursive function: one for mirroring the tree. *)
+    Here is another recursive function: one for mirroring a tree. *)
 
-Fixpoint tmirror (t : tree) : tree :=
+Fixpoint tmirror T (t : tree T) : tree T :=
   match t with
   | Leaf => Leaf
   | Node c t1 x t2 => Node c (tmirror t2) x (tmirror t1)
@@ -219,7 +294,7 @@ Fixpoint tmirror (t : tree) : tree :=
     has size [1] for all possible values of [x]. In Coq, this is done
     with the [Lemma] command: *)
 
-Lemma tsize1 (x : T) : tsize (singleton x) = 1.
+Lemma tsize1 T (x : T) : tsize (singleton x) = 1.
 
 (** By issuing this commmand, we declare that we want to prove a lemma
     called [tsize1], whose statement is a direct translation of the
@@ -270,7 +345,7 @@ Check tsize1.
     a step-by-step version of the previous proof, showing intermediate
     simplification steps that are omitted by Coq. *)
 
-Lemma tsize1' (x : T) : tsize (singleton x) = 1.
+Lemma tsize1' T (x : T) : tsize (singleton x) = 1.
 Proof.
 
 (** Writing [rewrite -[x]/(y)] instructs Coq to replace all
@@ -319,18 +394,18 @@ Qed.
     execute [t] and to conclude the proof afterwards by calling
     [done]. If the proof cannot be complete, Coq raises an error. *)
 
-Lemma tsize1'' (x : T) : tsize (singleton x) = 1.
+Lemma tsize1'' T (x : T) : tsize (singleton x) = 1.
 Proof. by rewrite /=. Qed.
 
 (** As a matter of fact, the above proof is so simple that we don't
     even need to tell Coq to simplify the goal; [done] alone
     suffices. Alternatively, we can also write [by []] (that is, [by]
-    with an "empty" first tactic) as a synonym of [done]: *)
+    with an "empty" first tactic) as a synonym for [done]: *)
 
-Lemma tsize1''' (x : T) : tsize (singleton x) = 1.
+Lemma tsize1''' T (x : T) : tsize (singleton x) = 1.
 Proof. done. Qed.
 
-Lemma tsize1'''' (x : T) : tsize (singleton x) = 1.
+Lemma tsize1'''' T (x : T) : tsize (singleton x) = 1.
 Proof. by []. Qed.
 
 (** Before we move on to more interesting proofs, it is worth leaving
@@ -342,14 +417,72 @@ Proof. by []. Qed.
     as we progress.
 
 
-    * Proof by case analysis
+    * Using sections
+
+    Coq provides another mechanism for alleviating the burden of
+    annotations: _sections_. Sections allow us to declare certain
+    parameters as being common to all definitions and lemmas enclosed
+    within it. Inside the section, these parameters don't have to be
+    redeclared and applied; when the section is closed, on the other
+    hand, all parameters become explicit.
+
+    Sections are opened with the [Section] keyword. Each section must
+    be given a name (in this case, [Ex]). *)
+
+Section Ex.
+
+(** Once we are inside a section, we can use the [Variable] command to
+    declare a parameter that will be shared by all definitions in the
+    section. *)
+
+Variable T : Type.
+
+(** We can also associate variable names to certain types. After the
+    following command, Coq assumes that [x] has type [T], unless
+    otherwise specified. This has the same effect for variables with
+    "similar" names, such as [x0] and [x']. *)
+
+Implicit Type x : T.
+
+(** We can now write statements such as this one: *)
+
+Lemma tsize1''''' x : tsize (singleton x) = 1.
+Proof. by []. Qed.
+
+(** Notice that [x] had to be declared in the statement of the lemma,
+    but that we didn't have to supply its type. [T], on the other
+    hand, didn't have to be declared again.
+
+    If we check the lemma we just proved, we see that [T] is "fixed"
+    (that is, not universally quantified): *)
+
+Check tsize1'''''.
+
+(** Once we close the [Ex] section, we see that [T] becomes explicitly
+    quantified: *)
+
+End Ex.
+
+Check tsize1'''''.
+
+(** We will enclose some of the remaining material in a section with
+    some variable declarations and implicit types, to make our lives
+    easier. *)
+
+Section Basic.
+
+Variable T : Type.
+
+Implicit Type (t : tree T) (x : T) (c : color).
+
+(** * Proof by case analysis
 
     Often, simplification is not enough to complete a proof. For
     instance, suppose that we have the following function [tcolor]
     which computes the color of the root of a tree (by convention,
     empty trees are colored black): *)
 
-Definition tcolor (t : tree) : color :=
+Definition tcolor t : color :=
   match t with
   | Leaf => Black
   | Node c _ _ _ => c
@@ -359,7 +492,7 @@ Definition tcolor (t : tree) : color :=
     color of the tree it is applied to. Let's try to convince Coq of
     this fact: *)
 
-Lemma tcolor_tmirror (t : tree) : tcolor (tmirror t) = tcolor t.
+Lemma tcolor_tmirror t : tcolor (tmirror t) = tcolor t.
 Proof.
 
 (** We can try to simplify the goal, but Coq won't be able to make any
@@ -395,7 +528,7 @@ case: t.
     mentioning [t] anymore, our goal now contains additional
     universally quantified variables, the arguments to the [Node]
     constructor. We can introduce these variables, bringing them from
-    the goal into the context by using the [move]: *)
+    the goal into the context by using the [move] tactic: *)
 
 move=> c t1 x t2.
 
@@ -411,7 +544,7 @@ Qed.
     tactic. For instance, we can use [case] to name all constructor
     arguments and perform a simplification automatically, like this: *)
 
-Lemma tcolor_tmirror' (t : tree) : tcolor (tmirror t) = tcolor t.
+Lemma tcolor_tmirror' t : tcolor (tmirror t) = tcolor t.
 Proof.
 case: t => [|c t1 x t2] /=.
 
@@ -434,7 +567,7 @@ Qed.
     arguments, since the [done] tactic is smart enough to do this by
     itself. *)
 
-Lemma tcolor_tmirror'' (t : tree) : tcolor (tmirror t) = tcolor t.
+Lemma tcolor_tmirror'' t : tcolor (tmirror t) = tcolor t.
 Proof. by case: t. Qed.
 
 (** Of course, in many cases we _do_ have to perform non-trivial
@@ -454,7 +587,7 @@ Proof. by case: t. Qed.
     previously proved equation. As a simple example, we can try to
     prove the following variant of [tcolor_tmirror]: *)
 
-Lemma tcolor_tmirror2 (t : tree) : tcolor (tmirror (tmirror t)) = tcolor t.
+Lemma tcolor_tmirror2 t : tcolor (tmirror (tmirror t)) = tcolor t.
 Proof.
 
 (** This result is simple enough that a single call to [case] would
@@ -591,7 +724,6 @@ Check 1 = 1.
     [Prop], even though it corresponds to a false claim. *)
 
 Check 0 = 1.
-
 (** Coq comes with a rich language for writing propositions. So far,
     we have encountered the equality operator [=], and universal
     quantification [forall], but there are many more. We will
@@ -614,7 +746,7 @@ Definition cancel' (S R : Type) (f : S -> R) (g : R -> S) : Prop :=
     arguments" option we enabled at the beginning of the file, we
     don't have to provide them most of the time. For instance: *)
 
-Lemma tmirrorK'''' : cancel tmirror tmirror.
+Lemma tmirrorK'''' : cancel (@tmirror T) (@tmirror T).
 Proof.
 
 (** To understand what's going on, it is sometimes useful to unfold
@@ -642,7 +774,7 @@ Qed.
     implicitly on the first universally quantified value in our goal,
     in stack-like fashion. *)
 
-Lemma tmirrorK''''' : involutive tmirror.
+Lemma tmirrorK''''' : involutive (@tmirror T).
 Proof. by elim=> [|/= c t1 -> x t2 ->]. Qed.
 
 (** Notice that we have used [involutive tmirror] instead of [tcancel
@@ -654,7 +786,7 @@ Proof. by elim=> [|/= c t1 -> x t2 ->]. Qed.
     variables in the context back in the goal. In this sense, it is
     the inverse of the [=>] introduction operator. For instance: *)
 
-Lemma tmirrorK'''''' : involutive tmirror.
+Lemma tmirrorK'''''' : involutive (@tmirror T).
 Proof.
 move=> t.
 move: t.
@@ -714,7 +846,20 @@ SearchAbout "+" associative.
 by rewrite addnC (addnC _ 1) addnA.
 Qed.
 
-Fixpoint tree_elems (t : tree) : seq T :=
+(** * Programming with sequences
+
+    Like other functional programming languages, ssreflect provides a
+    data type [seq] of finite sequences, or lists. This type is
+    parameterized over the type of elements contained in the sequence;
+    hence, elements of [seq nat] are sequences of natural numbers,
+    while elements of [seq bool] are sequences of booleans.
+
+    A literal sequence is given by a list of expressions of
+*)
+
+Check [::].
+
+Fixpoint tree_elems t : seq T :=
   match t with
   | Leaf => [::]
   | Node c t1 x t2 => tree_elems t1 ++ x :: tree_elems t2
@@ -731,9 +876,7 @@ Fixpoint tree_elems (t : tree) : seq T :=
     _cons_ operator, which adds an element of [T] at the beginning of
     some sequence. *)
 
-
-
-End Def.
+End Basic.
 
 (** Exercise:
 
