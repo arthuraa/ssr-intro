@@ -846,18 +846,159 @@ SearchAbout "+" associative.
 by rewrite addnC (addnC _ 1) addnA.
 Qed.
 
-(** * Programming with sequences
+(** * Interlude: programming with sequences
 
     Like other functional programming languages, ssreflect provides a
-    data type [seq] of finite sequences, or lists. This type is
-    parameterized over the type of elements contained in the sequence;
-    hence, elements of [seq nat] are sequences of natural numbers,
-    while elements of [seq bool] are sequences of booleans.
+    data type [seq] of finite sequences, or lists. To use it, you must
+    import the [Ssreflect.seq] library. This type is parameterized
+    over the type of elements contained in the sequence; hence,
+    elements of [seq nat] are sequences of natural numbers, while
+    elements of [seq bool] are sequences of booleans.
 
-    A literal sequence is given by a list of expressions of
-*)
+    A literal sequence of elements of some type [T] is given by a list
+    of expressions of type [T], separated by semicolons ([;]) and
+    enclosed by [[:: ... ]]: *)
 
 Check [::].
+Check [:: 1; 2; 3].
+
+(** The [++] operator concatenates two sequences, while the cons
+    operator [::] adds a single element to the beginning of a list. *)
+
+Check [:: true; false] ++ [:: true].
+Check 1 :: [:: 2; 3].
+
+(** You may have noticed that [1 :: [:: 2; 3]] gets printed exactly as
+    [[:: 1; 2; 3]]. This is because the sequence literal notation
+    defines [[:: x1 ; .. ; xn]] to be precisely [x1 :: .. :: xn ::
+    nil].
+
+    The [seq] library defines many common operations on sequences for
+    us. The familiar [map] function applies some function [f] to all
+    elements of a sequence [s]. Here, the [fun n => e] expression is
+    syntax for an an _anonymous function_ that takes [n] as an
+    argument and produces [e] as its result. *)
+
+Check map (fun n => [:: n]) [:: 1; 2; 3].
+
+(** Ssreflect has support for a limited form of _list comprehension_
+    syntax, similar to Haskell's. We can see that the above expression
+    is printed slightly different by Coq when we execute [Check]: *)
+
+Check [seq [:: n] | n <- [:: 1; 2; 3]].
+
+(** Unfortunately, Coq's notation mechanism is not powerful enough to
+    define a flexible, generic equivalent of the list comprehension
+    syntax. Thus, ssreflect defines special syntax for only a handful
+    of expressions involving sequences. You can read more about them
+    in the documentation of the [seq] library.
+
+    Finally, ssreflect provides an operator [\in] for testing whether
+    an element occurs in a sequence. *)
+
+Check 1 \in [:: 1; 2; 3].
+
+(** The [\in] operator is actually defined not just for sequences, but
+    for any type supporting a "membership test" operation. In the case
+    of sequences, we can only test for membership of elements of some
+    [eqType], which is a Coq type equipped with a boolean operation
+    for testing equality. We will come back to [eqType] in more detail
+    later; for now, you only need to know that ssreflect defines such
+    operations for many basic types, including [nat], [seq], among
+    others.
+
+
+    * Injectivity and disjointness of constructors
+
+    Here's an interesting lemma that we might want to prove about
+    sequences: *)
+
+Lemma map1_inj : injective (map (fun x : T => [:: x])).
+
+(** This lemma says building a sequence consisting only of singleton
+    sequences with elements drawn from some sequence is an injective
+    operation. (Note that, as many other functional programming
+    languages, Coq allows us to partially apply a function.) A
+    function [f] is injective if [f x1 = f x2] implies [x1 = x2], as
+    Coq can tell us: *)
+
+Print injective.
+
+(** We see that the hypothesis [f x1 = f x2] appears in the statement
+    of [injective] as a formula to the left of an arrow [->]. This is
+    just Coq's syntax for expressing hypothetical statements -- that
+    is, statements that require some assumptions to hold. Hypotheses
+    can be given names and brought into the context just as
+    universally quantified variables. Thus, we could try to begin our
+    proof like this: *)
+
+Proof.
+move=> s1 s2 e.
+
+(** Since our proof needs to reason about all elements of these
+    sequences, it seems reasonable to try to proceed by induction. For
+    instance, we could try doing induction on [s1]: *)
+
+Fail elim: s1.
+
+(** Unfortunately, Coq complains that it cannot do induction on [s1]
+    because that sequence appears in the [e] hypothesis. The solution
+    is to put [e] back into the goal with the generalization operator
+    [:], and then perform induction: *)
+
+move: e.
+elim: s1.
+
+(** We can generalize several expressions at the same time, which
+    allows us to combine both tactics above into a single call: *)
+
+Restart.
+move=> s1 s2 e.
+elim: s1 e => [|x1 s1 IH] /= e.
+
+(** Notice that the tactic above also moves [e] back into the context
+    after simplifying the goal, which has the effect of simplifying
+    [e] as well. (Try to remove the [/=] flag to see what happens!)
+
+    The induction principle for sequences says that, in order to prove
+    that some property holds of all sequences [s], it suffices to show
+    two things: (1) that the property holds of [[::]], and (2) that it
+    holds all sequences of the form [x :: s'] while assuming that it
+    is valid for [s']. This principle is just a consequence of [seq]
+    being inductively defined as having two constructors, which
+    correspond exactly to these cases.
+
+    On the first case, we see that the [e] hypothesis states that
+    mapping a function over [s2] results in an empty
+    sequence. Intuitively, we know that this must imply that [s2] is
+    also empty, because otherwise the result of map would have at
+    least one element. But how do we convince Coq of this fact?
+
+    Arguments of this form are usually done formally by case analysis:
+    we consider all possible forms that [s2] can have, but argue that
+    some of them cannot arise because a contradiction would
+    follow. Hence, we use the [case] tactic: *)
+
+  case: s2 e => [|x2 s2] /= e.
+
+(** Notice that we had also to generalize over [e] before performing
+    case analysis on [s2]. The first subgoal becomes [[::] = [::]],
+    which follows immediately. *)
+
+    by [].
+
+(** The goal on the second branch becomes [[::] = x2 :: s2], which is
+    obviously false! Fortunately, we see that [e] now asserts that the
+    empty sequence is equal to one that starts with the cons
+    constructor [::]. In Coq's logic, expressions of some inductive
+    type that begin with different constructors cannot be equal, which
+    means that this case is contradictory and can never occur. The
+    basic [done] tactic can take advantage of this fact to remove this
+    subgoal from further consideration. In common logic jargon, this
+    is an instance of the _principle of explosion_, which assert that
+    a contradiction entails anything. *)
+
+  by [].
 
 Fixpoint tree_elems t : seq T :=
   match t with
