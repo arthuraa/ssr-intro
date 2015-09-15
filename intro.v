@@ -1097,7 +1097,9 @@ case: s=> [|x s'] /=.
     This hypothesis is now absurd, which means that this case can
     actually never occur. The [done] tactic can detect this situation
     and remove the case from further consideration, allowing us to
-    conclude. *)
+    conclude. In logic jargon, this is a particular case of the
+    _principle of explosiion_, which states that a contradiction
+    entails anything. *)
 
 by [].
 Qed.
@@ -1192,6 +1194,51 @@ Proof. by []. Qed.
 Lemma bool_prop_ex3 (b c : bool) : b -> b && c = c.
 Proof. by move=> ->. Qed.
 
+(** Since different constructors are disjoint, we know that [false]
+    cannot occur in a hypothesis, because that is synonym with [false
+    = true]. The [done] tactic can detect this and similar hypotheses
+    in our context and discharge the current goal
+    automatically. Consider the following result: *)
+
+Lemma bool_prop_ex4 n : n <= 0 -> n = 0.
+Proof.
+
+(** To put the goal in a shape that can be simplified, we can perform
+    case analysis on [n]: *)
+
+case: n => [|n] /=.
+
+(** In the first subgoal, we have to prove [0 = 0], which is trivial: *)
+
+  by [].
+
+(** In the second one, we are left with a contradictory hypothesis,
+    stating that [n < 0] (recall that [n < 0] is just notation for
+    [n.+1 <= 0]). We can rewrite with [ltn0] lemma from [ssrnat]
+    to replace that hypothesis by [false], allowing us to conclude.. *)
+
+rewrite ltn0.
+by [].
+
+(** As a matter of fact, we don't even need to call rewrite: *)
+
+Restart.
+by case: n.
+Qed.
+
+(** We may also use a boolean to state that a certain proposition is
+    not valid. For instance: *)
+
+Lemma bool_prop_ex5 : (4 < 2) = false.
+Proof. by []. Qed.
+
+(** However, because of how the coercion from [bool] to [Prop] is
+    defined, ssreflect prefers statements of the form [~~ b = true]:
+    *)
+
+Lemma bool_prop_ex6 : ~~ (4 < 2).
+Proof. by []. Qed.
+
 (** * Specifying and verifying a tree operation
 
     We can use sequences to specify and verify our first interesting
@@ -1236,20 +1283,7 @@ Fixpoint telems T (t : tree T) : seq T :=
 Lemma tmember_sound x t : tmember x t -> x \in telems t.
 Proof.
 
-(** The statement of the lemma may may look simple, but there is a
-    subtle point worth noting: the logical implication operator [->]
-    takes two [Prop] expressions as arguments, but we use it with two
-    boolean expressions. Strictly speaking, [bool] and [Prop] are
-    distinct types, which means that there is no reason why Coq should
-    accept this statement a priori. The trick here is that ssreflect
-    automatically converts from [bool] to [Prop] whenever there is a
-    similar type mismatch: the boolean value [true], seen as a
-    proposition, is trivially true, while [false] is trivially
-    false. We will discuss the difference between [bool] and [Prop] in
-    more detail later, but for now you can think of [bool] as a
-    special case of [Prop].
-
-    It seems a good idea to try to prove this result by induction. *)
+(** It seems a good idea to try to prove this result by induction. *)
 
 elim: t => [|c t1 IH1 x' t2 IH2] /=.
 
@@ -1259,9 +1293,7 @@ elim: t => [|c t1 IH1 x' t2 IH2] /=.
     sequence, we can remark that [tmember x Leaf] is [false] by
     definition. This means that we never have to consider this case
     because it can never occur. The [done] tactic can detect this and
-    remove this case from consideration for us. In logic jargon, this
-    is a particular case of the _principle of explosiion_, which
-    states that a contradiction entails anything. *)
+    remove this case from consideration for us.  *)
 
   by [].
 
