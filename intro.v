@@ -940,11 +940,28 @@ Definition fib n := fib_aux n 0 1.
 
 Compute fib 8.
 
+(** We can subtract two numbers by using the [subn] function, written
+    as the familiar infix operator [-]. It is worth noting that,
+    because [nat] doesn't contain negative values, subtraction on
+    [nat] is _truncated_: if [n] is less than [m], then [n - m =
+    0]. *)
+
+Compute 2 - 4.
+
+(** We can test whether a number is less than other with the [<=] operator: *)
+
+Compute 2 <= 4.
+Compute 4 <= 2.
+
+(** We can also write [n < m], which is just special syntax for [n.+1 <= m]. *)
+
+Check (2 + 3).+1 <= 5.
+
 (** When used with a [nat], the [case] tactic behaves similarly to
-   [tree] or [bool]: it generates subgoals corresponding to the [O]
-   and [S] constructors. The [elim] tactic also works with members of
-   [nat], generating an induction hypothesis for the [S] case. Here is
-   a proof of the [addnA] lemma we have used above. *)
+    [tree] or [bool]: it generates subgoals corresponding to the [O]
+    and [S] constructors. The [elim] tactic also works with members of
+    [nat], generating an induction hypothesis for the [S] case. Here is
+    a proof of the [addnA] lemma we have used above. *)
 
 Lemma addnA' : associative addn.
 Proof.
