@@ -155,8 +155,8 @@ Check NatNode.
     [NatNode]. To use [NatNode], we must supply elements of matching
     types by writing them in sequence after that constructor: *)
 
-Check (NatNode Red NatLeaf 0 NatLeaf).
-Check (NatNode Black (NatNode Red NatLeaf 0 NatLeaf) 1 NatLeaf).
+Check NatNode Red NatLeaf 0 NatLeaf.
+Check NatNode Black (NatNode Red NatLeaf 0 NatLeaf) 1 NatLeaf.
 
 (** The first expression represents a tree of natural numbers that
     contains a single element: the number [0]. Its root node is
@@ -188,7 +188,7 @@ Check Node.
     is how we use [Leaf] to construct an empty [tree] of [nat]
     elements: *)
 
-Check (Leaf nat).
+Check Leaf nat.
 
 (** Providing these annotations can be cumbersome, so Coq provides a
     shorthand. We can specify that the value of [T] should be inferred
@@ -207,15 +207,15 @@ Arguments Leaf {T}.
     arguments as implicit. This allows us to write expressions such as
     the following: *)
 
-Check (Node Red Leaf 0 Leaf).
-Check (Node Black (Node Red Leaf 0 Leaf) 1 Leaf).
+Check Node Red Leaf 0 Leaf.
+Check Node Black (Node Red Leaf 0 Leaf) 1 Leaf.
 
 (** We can also turn off implicit arguments temporarily by prefixing
     an identifier with [@]. This is useful in situations where Coq
     doesn't have enough information to determine what the value of
     some type parameter should be. *)
 
-Check (@Node nat Red Leaf 0 (@Leaf nat)).
+Check @Node nat Red Leaf 0 (@Leaf nat).
 
 (** Before we move on, a small comment: the [of] and [&] symbols are
     part of ssreflect. Here is what the previous declaration would
@@ -248,7 +248,7 @@ Check singleton.
 (** The syntax for applying functions is the same as for data
     constructors: *)
 
-Check (singleton 0).
+Check singleton 0.
 
 (** Note that the above definition has type annotations in them. We
     can usually omit some or all of them, since Coq can infer them
