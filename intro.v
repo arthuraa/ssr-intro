@@ -262,7 +262,11 @@ Definition three_times T (x : T) :=
     since they can improve readability and serve as good
     documentation.
 
-    We define recursive functions using the [Fixpoint] command. For
+    We can use the [Compute] command to evaluate an expression: *)
+
+Compute three_times 0.
+
+(** We define recursive functions using the [Fixpoint] command. For
     instance, here is a function [tsize] that computes the number of
     elements stored in a tree: *)
 
@@ -848,7 +852,109 @@ Qed.
 
 End Basic.
 
-(** * Interlude: programming with sequences
+(** Before discussing more interesting operations on trees, it is
+    worth having a tour of some of the basic types and operations
+    provided by Coq and ssreflect.
+
+
+    * Booleans
+
+    Coq defines [bool] as an inductive data type with two
+    constructors: [true] and [false]. In that sense, it is equivalent
+    to the definition of the [color] type above. *)
+
+Print bool.
+
+(** We can perform case analysis on a boolean with the familiar
+    if-then-else syntax: *)
+
+Compute if true then 1 else 2.
+
+(** This form is just a shorthand to an explicit [match]: *)
+
+Compute match true with true => 1 | false => 2 end.
+
+(** Many standard boolean operations are already defined for us. We
+    write [&&], [||] and [~~] for the "and", "or", and "not"
+    functions. *)
+
+Check true && true.
+Check true || ~~ false.
+
+(** The [case] tactic can be used to do a proof by cases on members of
+    any inductively defined type, including [bool]. *)
+
+Lemma andbF' b : b && false = false.
+Proof.
+
+(** Coq cannot solve this goal by itself because [&&] is defined by
+    case analysis on its first argument: *)
+
+Print andb.
+
+(** If we do case on [b], on the other hand, the goal becomes
+    trivial. We can see that [b] is replaced by [true] and [false] on
+    each generated subgoal: *)
+
+case: b.
+  by [].
+by [].
+Qed.
+
+(** Ssreflect provides an [andbF] lemma whose statement is similar to
+    the one above. The name [andbF] means that the lemma talks about
+    what happens when we compute the [and] of an arbitrary boolean [b]
+    and [false] ([F]). (Can you guess what [andFb] states? What about
+    [andbT]?).
+
+
+    * Natural numbers
+
+    We have already seen some definitions involving natural
+    numbers. Unlike other languages, where numeric types are often
+    primitive, [nat] in Coq is just another inductive data type. It is
+    defined as the type having one constructor [O], representing zero,
+    and one constructor [S : nat -> nat], which represents the
+    successor of a number. *)
+
+Print nat.
+
+(** Coq allows us to write elements of [nat] with conventional arabic
+    notation. This feature is just for making programming with [nat]
+    more convenient: internally, natural numbers are still represented
+    with [S] and [O]. *)
+
+Check 2.
+Check S (S O).
+
+(** Additionally, ssreflect uses [n.+1] as special syntax for [S
+    n]. Here's a function for computing the Fibonacci numbers: *)
+
+Fixpoint fib_aux n acc1 acc2 :=
+  match n with
+  | 0 => acc2
+  | n'.+1 => fib_aux n' acc2 (acc1 + acc2)
+  end.
+
+Definition fib n := fib_aux n 0 1.
+
+Compute fib 8.
+
+(** When used with a [nat], the [case] tactic behaves similarly to
+   [tree] or [bool]: it generates subgoals corresponding to the [O]
+   and [S] constructors. The [elim] tactic also works with members of
+   [nat], generating an induction hypothesis for the [S] case. Here is
+   a proof of the [addnA] lemma we have used above. *)
+
+Lemma addnA' : associative addn.
+Proof.
+move=> n m p.
+elim: n => [|n IH] //=.
+rewrite addSn IH.
+by [].
+Qed.
+
+(** * Sequences
 
     Like other functional programming languages, ssreflect provides a
     data type [seq] of finite sequences, or lists. To use it, you must
@@ -1068,11 +1174,6 @@ Proof. by []. Qed.
 
 Lemma bool_prop_ex3 (b c : bool) : b -> b && c = c.
 Proof. by move=> ->. Qed.
-
-(** Notice that this works because [&&] is defined by case analysis on
-    its first argument: *)
-
-Print andb.
 
 (** * Specifying and verifying a tree operation
 
