@@ -846,6 +846,8 @@ SearchAbout "+" associative.
 by rewrite addnC (addnC _ 1) addnA.
 Qed.
 
+End Basic.
+
 (** * Interlude: programming with sequences
 
     Like other functional programming languages, ssreflect provides a
@@ -906,6 +908,98 @@ Check 1 \in [:: 1; 2; 3].
     later; for now, you only need to know that ssreflect defines such
     operations for many basic types, including [nat], [seq], among
     others.
+
+
+    * Specifying and verifying a tree operation
+
+    We can use sequences to specify and verify our first interesting
+    tree operation: a [tmember] function, that tests whether some
+    element [x] occurs on a tree [t], assuming that [t] is a binary
+    search tree -- that is, that any element on a node is greater than
+    those on its left subtree and smaller than those on its right
+    subtree.
+
+    It would be possible to program [tmember] for any type of elements
+    with a comparison operator. However, we will begin with something
+    simpler, and define [tmember] only for trees of natural numbers,
+    taking advantage of the usual comparison operator [<] defined in
+    the [ssrnat] library. Notice that our definition uses [if]
+    expressions, which are defined in the obvious way in terms of
+    [match]. *)
+
+Fixpoint tmember (x : nat) (t : tree nat) : bool :=
+  match t with
+  | Leaf => false
+  | Node _ t1 x' t2 =>
+    if x < x' then tmember x t1
+    else if x' < x then tmember x t2
+    else true
+  end.
+
+(** We will state the specification of [tmember] in terms of a
+    [telems] function, which lists all elements that appear in the
+    tree from left to right. *)
+
+Fixpoint telems T (t : tree T) : seq T :=
+  match t with
+  | Leaf => [::]
+  | Node _ t1 x t2 => telems t1 ++ x :: telems t2
+  end.
+
+(** In order to fully specify the behavior of [tmember], we would have
+    to reason about the search-tree invariant. Before getting there,
+    however, we start with something simpler: showing that if [tmember
+    x t] is true, then [x] must occur in [telems t]. Conditional
+    statements such as this one are written like that with the
+    implication operator [->]. *)
+
+Lemma tmember_sound x t : tmember x t -> x \in telems t.
+Proof.
+
+(** The statement of the lemma may may look simple, but there is a
+    subtle point worth noting: the logical implication operator [->]
+    takes two [Prop] expressions as arguments, but we use it with two
+    boolean expressions. Strictly speaking, [bool] and [Prop] are
+    distinct types, which means that there is no reason why Coq should
+    accept this statement a priori. The trick here is that ssreflect
+    automatically converts from [bool] to [Prop] whenever there is a
+    similar type mismatch: the boolean value [true], seen as a
+    proposition, is trivially true, while [false] is trivially
+    false. We will discuss the difference between [bool] and [Prop] in
+    more detail later, but for now you can think of [bool] as a
+    special case of [Prop].
+
+    It seems a good idea to try to prove this result by induction. *)
+
+elim: t => [|c t1 IH1 x' t2 IH2] /=.
+
+(** In the first case ([t = Leaf]), we have to prove that [x] occurs
+    in the empty sequence (that is, [telems Leaf]), assuming that
+    [tmember x Leaf] is true. While [x] cannot occur in an empty
+    sequence, we can remark that [tmember x Leaf] is [false] by
+    definition. This means that we never have to consider this case
+    because it can never occur. The [done] tactic can detect this and
+    remove this case from consideration for us. In logic jargon, this
+    is a particular case of the _principle of explosiion_, which
+    states that a contradiction entails anything. *)
+
+  by [].
+
+(** The second case is more interesting, as we have to consider all
+    possible outcomes of comparing [x'] and [x]. The [case] variant
+    below can be used to perform case analysis on a value while
+    generating an equation for that case. For reasons that soon will
+    become apparent, we will need these additional equations later. *)
+
+case e1: (x < x').
+
+(** In the first generated subgoal, we have an additional hypothesis
+    [e1] stating [(x < x') = true], and the original compliated
+    premise has been simplified to [tmember x t1]. *)
+
+  rewrite mem_cat.
+
+
 
 
     * Injectivity and disjointness of constructors
@@ -999,12 +1093,6 @@ elim: s1 e => [|x1 s1 IH] /= e.
     a contradiction entails anything. *)
 
   by [].
-
-Fixpoint tree_elems t : seq T :=
-  match t with
-  | Leaf => [::]
-  | Node c t1 x t2 => tree_elems t1 ++ x :: tree_elems t2
-  end.
 
 (** Our definition says that, when called on the empty tree [Leaf],
     [tree_elems] returns the empty sequence, which is denoted by
