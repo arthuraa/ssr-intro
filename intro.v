@@ -633,6 +633,21 @@ Proof. by rewrite tcolor_tmirror tcolor_tmirror. Qed.
 Lemma tcolor_tmirror2''' t : tcolor (tmirror (tmirror t)) = tcolor t.
 Proof. by rewrite !tcolor_tmirror. Qed.
 
+(** Finally, we can prefix a lemma with a minus sign [-] to indicate
+    that we want to rewrite in the opposite direction: *)
+
+Lemma tcolor_tmirror2'''' t : tcolor (tmirror (tmirror t)) = tcolor t.
+Proof.
+
+(* Replace [tcolor t] by [tcolor (tmirror t)] *)
+rewrite -(tcolor_tmirror t).
+
+(* Replace [tcolor (tmirror t)] by [tcolor (tmirror (tmirror t))] *)
+rewrite -(tcolor_tmirror (tmirror t)).
+
+by [].
+Qed.
+
 (** * Proof by induction
 
     Coq is not smart enough to come up with its own inductive
