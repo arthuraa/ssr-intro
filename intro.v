@@ -1023,7 +1023,58 @@ Qed.
 (** (Can you make this proof shorter?)
 
 
-    * Specifying and verifying a tree operation
+    * Using booleans as propositions
+
+    We often want to state facts as an equality between booleans. For
+    instance, here's is how we might say that the number [1] occurs in
+    the sequence [[:: 1; 2; 3]]: *)
+
+Lemma bool_prop_ex1 : (1 \in [:: 1; 2; 3]) = true.
+
+(** Since the [\in] operator is defined by a function that computes a
+    boolean, Coq can attest that this claim is valid by computation. *)
+
+Proof. by []. Qed.
+
+(** This pattern is so common that ssreflect provides a shorthand for
+    it: whenever an expression [e] of type [bool] is used in a context
+    that expects an expression of type [Prop], [e] is implicitly
+    converted to [Prop] by mapping it to [e = true]. *)
+
+Lemma bool_prop_ex2 : 1 \in [:: 1; 2; 3].
+
+(** This is an instance of a generic feature of Coq called _implicit
+    coercions_, which allows certain functions to be implicitly
+    inserted in an expression to convert from one type to another. We
+    can have a better sense of what is going on by telling Coq to show
+    all coercions that are applied: *)
+
+Set Printing Coercions.
+
+(** We can see that the goal we were trying to prove is actually
+    [is_true (1 \in [:: 1; 2; 3])], where [is_true b] is defined as [b
+    = true]. *)
+
+Unset Printing Coercions.
+
+(** Coq treats [is_true b] as if it were an equality. For instance,
+    it can solve trivial goals involving [is_true] with [done]. *)
+
+Proof. by []. Qed.
+
+(** It can also rewrite with hypotheses of the form [is_true b], which
+    has the effect of replacing [b] by [true]. For instance, we can
+    prove the following fact about the boolean "and" operator [&&]: *)
+
+Lemma bool_prop_ex3 (b c : bool) : b -> b && c = c.
+Proof. by move=> ->. Qed.
+
+(** Notice that this works because [&&] is defined by case analysis on
+    its first argument: *)
+
+Print andb.
+
+(** * Specifying and verifying a tree operation
 
     We can use sequences to specify and verify our first interesting
     tree operation: a [tmember] function, that tests whether some
