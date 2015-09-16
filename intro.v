@@ -865,6 +865,157 @@ SearchAbout "+" associative.
 by rewrite addnC (addnC _ 1) addnA.
 Qed.
 
+(** * Hypothetical statements
+
+    So far, we have seen how to prove facts that are always true. In
+    many cases, however, we are interested in facts that are only
+    valid when certain hypotheses hold. In Coq, we can express such
+    hypothetical statements with the implication operator [->]. For
+    example: *)
+
+Lemma tmirror_leaf t : tmirror t = Leaf -> t = Leaf.
+
+(** Each formula preceeding an arrow is a hypothesis that needs to be
+    met for the conclusion of the statement (the formula after [->])
+    to hold. In this case, the lemma says that if the result of
+    [tmirror t] is [Leaf], then [t] itself must be equal to [Leaf].
+
+    We can use the [=>] operator to name hypotheses that appear in the
+    goal and bring them into the context. This allows us to use a
+    hypothesis like we used previous lemmas or induction hypotheses: *)
+
+Proof.
+move=> e.
+
+(** We can use [tmirrorK] to replace [t] by [tmirror (tmirror t)]. *)
+
+rewrite -(tmirrorK t).
+
+(** Thanks to our hypothesis, we can now bring the goal to a more
+    palatable form. *)
+
+rewrite e.
+
+(** Since [tmirror Leaf] is equal to [Leaf] by simplification, Coq can
+    conclude directly. *)
+
+by [].
+Qed.
+
+(** This shows how to prove hypothetical results. It is also possible
+    to use hypothetical results to prove other statements; this in
+    turn requires that we prove separately each hypothesis in that
+    statement. *)
+
+Lemma tmirror_leaf2 t : tmirror (tmirror t) = Leaf -> t = Leaf.
+Proof.
+move=> e.
+
+(** Since the [tmirror_leaf] lemma used below has a hypothesis, the
+    rewrite below generates two subgoals: [Leaf = Leaf] and [tmirror t
+    = Leaf]. The first one is trivial, and can be discharged directly
+    with [//]. Notice*)
+
+rewrite (@tmirror_leaf t) //.
+
+(** Alternatively, if the goal matches exactly the conclusion of a
+    lemma or hypothesis in the context, we can use the [apply]
+    tactic. Once again, if the result we apply has any hypotheses,
+    we will have to solve them as separate subgoals. *)
+
+apply: tmirror_leaf.
+by [].
+
+(** In this case, choosing between [rewrite] and [apply] was (almost)
+    just a matter of style. It is important to notice, however, that
+    both tactics are usually not interchangeable. [rewrite] only works
+    with statements whose conclusions are equalities, and performs a
+    small modification on the goal. [apply], on the other hand, works
+    with goals that involve _arbitrary_ logical constructs, not just
+    equalities. It will be more useful once we learn more about Coq's
+    logic.
+
+    Besides using lemmas as functions to specify the value of
+    universally quantified variables, we can use function application
+    syntax to supply hypotheses. We can use this feature to prove the
+    previous theorem with a single call to [apply]. *)
+
+Restart.
+move=> e.
+by apply: (tmirror_leaf (tmirror_leaf e)).
+
+(** Instead of using [by apply], we can also use [exact]. There are
+    subtle differences between the two, but for now we can think of
+    [exact] as a shorter version of [by apply]. *)
+
+Restart.
+move=> e.
+exact: (tmirror_leaf (tmirror_leaf e)).
+Qed.
+
+(** * Forward reasoning tactics
+
+    Coq's primary style of interaction is backwards: we progressively
+    simplify the goal, until it reaches a state where it can be solved
+    trivially. Often, it is more convenient to reason _forward_
+    instead: progressively deduce more and more complex facts from the
+    hypotheses that we have, until some of them can apply directly to
+    the goal.
+
+    In ssreflect, the two primary forward-reasoning tactics are [have]
+    and [suffices]. When we write [have e: P], Coq adds a new
+    intermediate subgoal where it asks for a proof of [P]. Once we
+    complete the proof, it resumes the original subgoal, enriching the
+    context with a new hypotheses [e : P]. We can use [have] to write
+    an alternative proof of [tmirror_leaf2]: *)
+
+Lemma tmirror_leaf2' t : tmirror (tmirror t) = Leaf -> t = Leaf.
+Proof.
+move=> e.
+have e': tmirror t = Leaf.
+  by apply: tmirror_leaf.
+by apply: (tmirror_leaf e').
+
+(** It is important to notice that the [:] symbol used in [have] is
+    unrelated to the use of [:] in tactics such as [apply], [move] and
+    [case]: in [have], its purpose is to state the intermediate result
+    we want to prove, while in the other tactics we have seen it moves
+    variables and hypotheses from the context into the goal.
+
+    If the intermediate proof used with [have] is short, we can
+    condense it into a single tactic, using the [by] keyword. *)
+
+Restart.
+move=> e.
+have e': tmirror t = Leaf by apply: tmirror_leaf.
+by apply: (tmirror_leaf e').
+
+(** The [suffices] tactic is similar to [have]. Its main difference is
+    that it reverses the order of the generated subgoals: the first
+    subgoal is augmented with the new fact, while the second one asks
+    of the proof of that auxiliary fact. Compare: *)
+
+Restart.
+move=> e.
+suffices e': tmirror t = Leaf.
+  by apply: (tmirror_leaf e').
+by apply: tmirror_leaf.
+
+(** We are also allowed to merge the proof of the first subgoal into
+    the call to [suffices]: *)
+
+Restart.
+move=> e.
+suffices e': tmirror t = Leaf by apply: (tmirror_leaf e').
+by apply: tmirror_leaf.
+Qed.
+
+(** The [suffices] tactic is useful when the proof of the auxiliary
+    statement is more complicated than the part that uses it. Its name
+    is meant to mimic the usual pattern seen in mathematical proofs:
+    "To show A, it suffices to show B, because [short argument
+    follows]. Let's then prove B." *)
+
 End Basic.
 
 (** Before discussing more interesting operations on trees, it is
@@ -1254,6 +1405,41 @@ Proof. by []. Qed.
 Lemma bool_prop_ex6 : ~~ (4 < 2).
 Proof. by []. Qed.
 
+(** * Generalizing the induction hypothesis *)
+
+Module Rev.
+
+Section Rev.
+
+Variable T : Type.
+
+Implicit Type s : seq T.
+
+Fixpoint rev s :=
+  match s with
+  | [::] => [::]
+  | x :: s => rev s ++ [:: x]
+  end.
+
+Fixpoint tr_rev_aux s acc :=
+  match s with
+  | [::] => acc
+  | x :: s => tr_rev_aux s (x :: acc)
+  end.
+
+Definition tr_rev s := tr_rev_aux s [::].
+
+Lemma tr_revE s : tr_rev s = rev s.
+Proof.
+rewrite /tr_rev -[RHS]cats0.
+elim: s [::] => [|x s IH] //= acc.
+by rewrite IH -catA.
+Qed.
+
+End Rev.
+
+End Rev.
+
 (** * Specifying and verifying a tree operation
 
     We can use sequences to specify and verify our first interesting
@@ -1324,25 +1510,24 @@ case e1: (x < x').
     [e1] stating [(x < x') = true], and the original compliated
     premise has been simplified to [tmember x t1]. *)
 
-  rewrite mem_cat.
+  rewrite mem_cat => e.
+  by rewrite (IH1 e).
 
-(** Exercise:
+case e2: (x' < x).
 
-    The type of booleans [bool] is defined as an inductive type
-    generated by two values, [true] and [false]. In this sense, it is
-    equivalent to the [color] type defined above. The [negb] function
-    implements boolean negation. It is defined as:
+  rewrite mem_cat /= inE.
 
-        negb b := if b then false else true
+Admitted.
 
-    Prove this: *)
+(** * Exercises: *)
 
 Lemma negbK' : involutive negb.
 Proof. Admitted.
 
-(** Exercise:
-
-    Prove this fact. *)
-
+(** Hint: The [drop_size_cat] lemma might come in handy. *)
 Lemma cat_fact T (s : seq T) : s ++ s = s -> s = [::].
+Proof. Admitted.
+
+(** Hint: What is the value of [fib_aux n (x1 + x2) (y1 + y2)]? *)
+Lemma fib2 n : fib n.+2 = fib n.+1 + fib n.
 Proof. Admitted.
