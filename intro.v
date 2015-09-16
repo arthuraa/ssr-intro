@@ -1094,8 +1094,16 @@ Check 2.
 Check S (S O).
 
 (** Additionally, ssreflect uses [n.+1] as special syntax for [S
-    n]. For instance, here's how we can define a function for
-    computing the Fibonacci numbers: *)
+    n]: *)
+
+Check 0.+1.+1.
+
+(** We can also use [n.+2], [n.+3] and [n.+4]. *)
+
+Check 0.+2.
+
+(** For instance, here's how we can define a function for computing
+    the Fibonacci numbers: *)
 
 Fixpoint fib_aux n acc1 acc2 :=
   if n is n'.+1 then fib_aux n' acc2 (acc1 + acc2)
