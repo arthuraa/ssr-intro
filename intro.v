@@ -1371,7 +1371,8 @@ case: n => [|n] /=.
 rewrite ltn0.
 by [].
 
-(** As a matter of fact, we don't even need to call rewrite: *)
+(** As a matter of fact, we don't even need to call [rewrite], because
+    [n < 0] can be "forced" to simplify to [false]: *)
 
 Restart.
 by case: n.
@@ -1507,6 +1508,12 @@ Admitted.
 (** * Exercises: *)
 
 Lemma negbK' : involutive negb.
+Proof. Admitted.
+
+Lemma eq_add_0L n m : n + m = 0 -> n = 0.
+Proof. Admitted.
+
+Lemma eq_add_0R n m : n + m = 0 -> m = 0.
 Proof. Admitted.
 
 (** Hint: The [drop_size_cat] lemma might come in handy. *)
