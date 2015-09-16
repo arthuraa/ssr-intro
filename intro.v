@@ -1094,19 +1094,24 @@ Check 2.
 Check S (S O).
 
 (** Additionally, ssreflect uses [n.+1] as special syntax for [S
-    n]. Here's a function for computing the Fibonacci numbers: *)
+    n]. For instance, here's how we can define a function for
+    computing the Fibonacci numbers: *)
 
 Fixpoint fib_aux n acc1 acc2 :=
-  match n with
-  | 0 => acc2
-  | n'.+1 => fib_aux n' acc2 (acc1 + acc2)
-  end.
+  if n is n'.+1 then fib_aux n' acc2 (acc1 + acc2)
+  else acc2.
 
 Definition fib n := fib_aux n 0 1.
 
 Compute fib 8.
 
-(** We can subtract two numbers by using the [subn] function, written
+(** This definition also uses a different syntax for doing pattern
+    matching. [if e is p then e1 else e2] is just a synonym for [match
+    e with p => e1 | _ => e2]. If it is not obvious for you that this
+    function defines the Fibonacci numbers, check the exercise at the
+    end of the chapter.
+
+    We can subtract two numbers by using the [subn] function, written
     as the familiar infix operator [-]. It is worth noting that,
     because [nat] doesn't contain negative values, subtraction on
     [nat] is _truncated_: if [n] is less than [m], then [n - m =
