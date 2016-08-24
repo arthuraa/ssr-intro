@@ -1,11 +1,21 @@
+From mathcomp Require Import ssreflect ssrfun ssrnat eqtype.
+
+From ssrintro Require Import intro.
+
 (** * Proof by Simplification
 
     After writing simple programs in Coq's functional language, let's turn our
     attention to stating and proving properties about these programs. For
-    example, we might want to claim that [singleton x] has size [1] for all
-    possible values of [x]. In Coq, this is done with the [Lemma] command: *)
+    example, consider the following function [singleton], which constructs a
+    tree that stores a single number. *)
 
-Lemma tsize1 T (x : T) : tsize (singleton x) = 1.
+Definition singleton (n : nat) : tree :=
+  Node Leaf n Leaf.
+
+(** We might want to claim that [singleton n] has size [1] for all possible
+    values of [n]. In Coq, this is done with the [Lemma] command: *)
+
+Lemma tsize1 (n : nat) : tsize (singleton n) = 1.
 
 (** By issuing this commmand, we declare that we want to prove a lemma called
     [tsize1], whose statement is a direct translation of the above claim. This
@@ -54,7 +64,7 @@ Check tsize1.
     step-by-step version of the previous proof, showing intermediate
     simplification steps that are omitted by Coq. *)
 
-Lemma tsize1' T (x : T) : tsize (singleton x) = 1.
+Lemma tsize1' (n : nat) : tsize (singleton n) = 1.
 Proof.
 
 (** Writing [rewrite -[x]/(y)] instructs Coq to replace all occurrences of [x]
@@ -63,7 +73,7 @@ Proof.
     understands that both terms are equal because the second is exactly what we
     gave for the definition of [singleton]. *)
 
-rewrite -[singleton x]/(Node Red Leaf x Leaf).
+rewrite -[singleton n]/(Node Leaf n Leaf).
 
 (** Here, we can see that [rewrite] is a more general tactic that takes many
     possible actions as arguments, which have slightly different effects.
@@ -71,9 +81,9 @@ rewrite -[singleton x]/(Node Red Leaf x Leaf).
     We can perform a similar exercise for [tsize], and replace the call to it by
     its definition. *)
 
-rewrite -[tsize _]/(match Node Red Leaf x Leaf with
+rewrite -[tsize _]/(match Node Leaf n Leaf with
                     | Leaf => 0
-                    | Node _ t1 _ t2 => tsize t1 + 1 + tsize t2
+                    | Node t1 _ t2 => tsize t1 + 1 + tsize t2
                     end).
 
 (** Notice that we didn't specify the argument that was given to [tsize], and
@@ -101,7 +111,7 @@ Qed.
     conclude the proof afterwards by calling [done]. If the proof cannot be
     complete, Coq raises an error. *)
 
-Lemma tsize1'' T (x : T) : tsize (singleton x) = 1.
+Lemma tsize1'' (n : nat) : tsize (singleton n) = 1.
 Proof. by rewrite /=. Qed.
 
 (** As a matter of fact, the above proof is so simple that we don't even need to
@@ -109,10 +119,10 @@ Proof. by rewrite /=. Qed.
     also write [by []] (that is, [by] with an "empty" first tactic) as a synonym
     for [done]: *)
 
-Lemma tsize1''' T (x : T) : tsize (singleton x) = 1.
+Lemma tsize1''' (n : nat) : tsize (singleton n) = 1.
 Proof. done. Qed.
 
-Lemma tsize1'''' T (x : T) : tsize (singleton x) = 1.
+Lemma tsize1'''' (n : nat) : tsize (singleton n) = 1.
 Proof. by []. Qed.
 
 (** Before we move on to more interesting proofs, it is worth leaving a small
@@ -150,7 +160,7 @@ Implicit Type x : T.
 
 (** We can now write statements such as this one: *)
 
-Lemma tsize1''''' x : tsize (singleton x) = 1.
+Lemma tsize1''''' n : tsize (singleton n) = 1.
 Proof. by []. Qed.
 
 (** Notice that [x] had to be declared in the statement of the lemma, but that
@@ -176,7 +186,7 @@ Section Basic.
 
 Variable T : Type.
 
-Implicit Type (t : tree T) (x : T) (c : color).
+Implicit Type (t : tree) (x : T).
 
 (** * Proof by case analysis
 
