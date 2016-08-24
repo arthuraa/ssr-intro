@@ -63,11 +63,10 @@
     entire file ([C-n C-b] in Proof General). Try to play with these commands a
     little bit to familiarize yourself with the environment.
 
-    The two lines that you see below import ssreflect libraries that we use in
-    this file. *)
+    The line that you see below imports ssreflect libraries that we use in this
+    file. *)
 
-Require Import Ssreflect.ssreflect Ssreflect.ssrfun Ssreflect.ssrbool.
-Require Import Ssreflect.ssrnat Ssreflect.eqtype Ssreflect.seq.
+From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 
 (** (If you encounter warning messages when importing these files, don't worry:
     they are probably harmless. Ssreflect redefines some of the basic Coq
