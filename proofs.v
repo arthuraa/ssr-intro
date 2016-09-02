@@ -1,70 +1,78 @@
-From mathcomp Require Import ssreflect ssrfun ssrnat eqtype.
-
+From mathcomp Require Import ssreflect ssrfun ssrnat ssrbool eqtype seq.
 From ssrintro Require Import intro.
 
-(** * Proof by Simplification
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
 
-    After writing simple programs in Coq's functional language, let's turn our
-    attention to stating and proving properties about these programs. For
-    example, consider the following function [singleton], which constructs a
-    tree that stores a single number. *)
+(** Programmers rely on testing to ensure that their code behaves as expected,
+    but this is often too weak to catch errors -- as Dijkstra used to put it,
+    "testing shows the presence, not the absence of bugs".  In this chapter, we
+    will start to use Coq to write precise specifications about programs and
+    formally verify that they are valid.
 
-Definition singleton (n : nat) : tree :=
-  Node Leaf n Leaf.
 
-(** We might want to claim that [singleton n] has size [1] for all possible
-    values of [n]. In Coq, this is done with the [Lemma] command: *)
+    * Proof by Simplification
 
-Lemma tsize1 (n : nat) : tsize (singleton n) = 1.
+    Consider the following (very simple) verification task: we would like to
+    ensure that the expression [is_empty Leaf] evaluates to [true].  We can
+    state this claim in Coq with the [Lemma] command. *)
 
-(** By issuing this commmand, we declare that we want to prove a lemma called
-    [tsize1], whose statement is a direct translation of the above claim. This
-    causes Coq to enter _proof mode_, where it expects us to provide a proof for
-    that statement. We can now see a new window which displays the current state
-    of our proof. This window is split by a horizontal line. Below that line is
-    the _goal_, which says what else remains to be proved; above that line is a
-    list of local variables and hypotheses. Proofs are written with special
-    commands called _tactics_. Each tactic transforms the goal a little bit,
-    applying inference steps that (hopefully) bring us towards a state where our
-    claim becomes obvious enough to be accepted by Coq. Coq checks each argument
-    that we try to enter according to the rules of its logic, rejecting any
-    invalid proofs. This ensures that, whenever a proof is accepted by Coq, we
-    can have a high degree of confidence that it is correct.
+Lemma is_empty_leaf : is_empty Leaf = true.
 
-    We start proofs with the [Proof] command: *)
+(** This command tells Coq that we want to prove a statement called
+    [is_empty_leaf] asserting that [is_empty Leaf] is equal to [true].  We can
+    see now that Coq's interface changed a bit, displaying our claim in a
+    separate window.  Our goal is to convince Coq that this claim holds.  The
+    [Proof] command marks the beginning of our proof.  (It is not needed,
+    strictly speaking, but it is considered good style to include it.) *)
 
 Proof.
 
-(** Our first tactic is [rewrite /=], which attempts to simplify the current
-    goal according to the computation rules of Coq's logic. *)
+(** To write proofs, we use special commands called _tactics_.  Each tactic
+    transforms the goal a little bit, applying inference steps that (hopefully)
+    bring us towards a state where our claim becomes obvious enough to Coq.  Coq
+    checks that each argument is sound according to the rules of its logic and
+    rejects any invalid proofs.
+
+    Our first tactic is [rewrite /=], which attempts to simplify the current
+    goal by roughly expanding definitions and performing trivial computation
+    steps.  Recall that we defined [is_empty_left] with a [match] expression
+    that returned [true] whenever applied to [Leaf]; thus, it makes sense to try
+    to replace [is_empty_leaf Leaf] with [true]. *)
 
 rewrite /=.
 
-(** We can see that [rewrite /=] replaced [tsize (singleton x) = 1] by [0 + 1 +
-    0 = 1]. At this point, the statement is obvious enough that Coq can accept
-    that it is true without further help. We can complete the proof with the
-    [done] tactic: *)
+(** We can see that the previous goal became [true = true].  This statement is
+    obvious enough for Coq to accept without further help.  To complete the
+    proof, we use the [done] tactic: *)
 
 done.
 
-(** Coq now tells us that there are no more subgoals, which means that our proof
-    is complete. The [Qed.] command causes Coq to exit proof mode once the proof
-    is complete. *)
+(** Coq now tells us that there are no more subgoals, which means that there is
+    nothing else left to prove.  We conclude our proof with the [Qed] command,
+    records [is_empty_left] as a true statement.  We can convince ourselves that
+    Coq believes in our claim by issuing the [Check] command. *)
 
 Qed.
 
-(** We can now refer to the theorem we just proved by its name. The [forall]
-    annotation given in the statement of the checked lemma means (as you may
-    guess) that [x] is universally quantified and may be instantiated
-    arbitrarily. *)
+Check is_empty_leaf.
 
-Check tsize1.
+(** This first example property may seem a bit disappointing, given that we
+    could have checked it by simply asking Coq to evaluate [is_empty Leaf] for
+    us.  In that sense, we have not gained anything compared to a conventional
+    testing infrastructure.  For a slightly more interesting example, let us
+    prove something about the behavior of _infinitely many programs_: *)
 
-(** To better understand how simplification is performed, we can write a
-    step-by-step version of the previous proof, showing intermediate
-    simplification steps that are omitted by Coq. *)
+Lemma is_empty_node t1 n t2 : is_empty (Node t1 n t2) = false.
+Proof. rewrite /=. done. Qed.
 
-Lemma tsize1' (n : nat) : tsize (singleton n) = 1.
+(** To better understand how simplification is performed, consider the following
+    function and properties. *)
+
+Definition singleton n := Node Leaf n Leaf.
+
+Lemma tsize1 n : tsize (singleton n) = 1.
 Proof.
 
 (** Writing [rewrite -[x]/(y)] instructs Coq to replace all occurrences of [x]
@@ -111,7 +119,7 @@ Qed.
     conclude the proof afterwards by calling [done]. If the proof cannot be
     complete, Coq raises an error. *)
 
-Lemma tsize1'' (n : nat) : tsize (singleton n) = 1.
+Lemma tsize1' (n : nat) : tsize (singleton n) = 1.
 Proof. by rewrite /=. Qed.
 
 (** As a matter of fact, the above proof is so simple that we don't even need to
@@ -119,10 +127,10 @@ Proof. by rewrite /=. Qed.
     also write [by []] (that is, [by] with an "empty" first tactic) as a synonym
     for [done]: *)
 
-Lemma tsize1''' (n : nat) : tsize (singleton n) = 1.
+Lemma tsize1'' (n : nat) : tsize (singleton n) = 1.
 Proof. done. Qed.
 
-Lemma tsize1'''' (n : nat) : tsize (singleton n) = 1.
+Lemma tsize1''' (n : nat) : tsize (singleton n) = 1.
 Proof. by []. Qed.
 
 (** Before we move on to more interesting proofs, it is worth leaving a small
@@ -152,15 +160,15 @@ Section Ex.
 Variable T : Type.
 
 (** We can also associate variable names to certain types. After the following
-    command, Coq assumes that [x] has type [T], unless otherwise specified. This
-    has the same effect for variables with "similar" names, such as [x0] and
-    [x']. *)
+    command, Coq assumes that [x] has type [nat], unless otherwise
+    specified. This has the same effect for variables with "similar" names, such
+    as [x0] and [x']. *)
 
-Implicit Type x : T.
+Implicit Type x : nat.
 
 (** We can now write statements such as this one: *)
 
-Lemma tsize1''''' n : tsize (singleton n) = 1.
+Lemma tsize1'''' n : tsize (singleton n) = 1.
 Proof. by []. Qed.
 
 (** Notice that [x] had to be declared in the statement of the lemma, but that
@@ -170,14 +178,14 @@ Proof. by []. Qed.
     If we check the lemma we just proved, we see that [T] is "fixed" (that is,
     not universally quantified): *)
 
-Check tsize1'''''.
+Check tsize1''''.
 
 (** Once we close the [Ex] section, we see that [T] becomes explicitly
     quantified: *)
 
 End Ex.
 
-Check tsize1'''''.
+Check tsize1''''.
 
 (** We will enclose some of the remaining material in a section with some
     variable declarations and implicit types, to make our lives easier. *)
@@ -191,20 +199,20 @@ Implicit Type (t : tree) (x : T).
 (** * Proof by case analysis
 
     Often, simplification is not enough to complete a proof. For instance,
-    suppose that we have the following function [tcolor] which computes the
-    color of the root of a tree (by convention, empty trees are colored black):
-    *)
+    suppose that we have the following function [troot] which computes the
+    element stored in the root of a tree (notice that an empty tree has 0 at its
+    root by convention): *)
 
-Definition tcolor t : color :=
+Definition troot t : nat :=
   match t with
-  | Leaf => Black
-  | Node c _ _ _ => c
+  | Leaf => 0
+  | Node _ n _ => n
   end.
 
-(** Clearly, the [tmirror] function defined above does not change the color of
+(** Clearly, the [tmirror] function defined above does not change the root of
     the tree it is applied to. Let's try to convince Coq of this fact: *)
 
-Lemma tcolor_tmirror t : tcolor (tmirror t) = tcolor t.
+Lemma troot_tmirror t : troot (tmirror t) = troot t.
 Proof.
 
 (** We can try to simplify the goal, but Coq won't be able to make any
@@ -239,7 +247,7 @@ case: t.
     the arguments to the [Node] constructor. We can introduce these variables,
     bringing them from the goal into the context by using the [move] tactic: *)
 
-move=> c t1 x t2.
+move=> t1 n t2.
 
 (** Each name given after the [=>] operator is used to name one universally
     quantified variable present in the goal. We can now simplify our goal as
@@ -253,9 +261,9 @@ Qed.
     instance, we can use [case] to name all constructor arguments and perform a
     simplification automatically, like this: *)
 
-Lemma tcolor_tmirror' t : tcolor (tmirror t) = tcolor t.
+Lemma troot_tmirror' t : troot (tmirror t) = troot t.
 Proof.
-case: t => [|c t1 x t2] /=.
+case: t => [|t1 n t2] /=.
 
 (** The pattern enclosed by square brackets in the above tactic names the
     arguments resulting from each constructor of [tree]. In the general case,
@@ -274,7 +282,7 @@ Qed.
 (** As a matter of fact, we didn't even have to name the constructor arguments,
     since the [done] tactic is smart enough to do this by itself. *)
 
-Lemma tcolor_tmirror'' t : tcolor (tmirror t) = tcolor t.
+Lemma troot_tmirror'' t : troot (tmirror t) = troot t.
 Proof. by case: t. Qed.
 
 (** Of course, in many cases we _do_ have to perform non-trivial reasoning steps
@@ -291,22 +299,22 @@ Proof. by case: t. Qed.
     The [rewrite] tactic can be used not only with the [/=] symbol, which
     performs simplification by computation, but also with any previously proved
     equation. As a simple example, we can try to prove the following variant of
-    [tcolor_tmirror]: *)
+    [troot_tmirror]: *)
 
-Lemma tcolor_tmirror2 t : tcolor (tmirror (tmirror t)) = tcolor t.
+Lemma troot_tmirror2 t : troot (tmirror (tmirror t)) = troot t.
 Proof.
 
 (** This result is simple enough that a single call to [case] would suffice to
-    solve it, as in [tcolor_tmirror]. However, we can take a slightly different
-    approach, using [tcolor_tmirror] instead to rewrite on the left-hand side of
+    solve it, as in [troot_tmirror]. However, we can take a slightly different
+    approach, using [troot_tmirror] instead to rewrite on the left-hand side of
     the equation. *)
 
-rewrite tcolor_tmirror.
-rewrite tcolor_tmirror.
+rewrite troot_tmirror.
+rewrite troot_tmirror.
 by [].
 Qed.
 
-(** As we can see, each call to [rewrite] instantiated the [tcolor_tmirror]
+(** As we can see, each call to [rewrite] instantiated the [troot_tmirror]
     lemma with a different tree value, successively removing calls to
     [tmirror]. In the first rewrite, the tree value was instantiated to [tmirror
     t], while in the second one, it was instantiated with [t] itself. Coq
@@ -316,35 +324,35 @@ Qed.
     there are multiple possible instantiations and Coq doesn't choose the one we
     want by itself. *)
 
-Lemma tcolor_tmirror2' t : tcolor (tmirror (tmirror t)) = tcolor t.
+Lemma troot_tmirror2' t : troot (tmirror (tmirror t)) = troot t.
 Proof.
-rewrite (tcolor_tmirror (tmirror t)).
-rewrite (tcolor_tmirror t).
+rewrite (troot_tmirror (tmirror t)).
+rewrite (troot_tmirror t).
 by [].
 Qed.
 
 (** It is also possible to perform several rewrite steps at once: *)
 
-Lemma tcolor_tmirror2'' t : tcolor (tmirror (tmirror t)) = tcolor t.
-Proof. by rewrite tcolor_tmirror tcolor_tmirror. Qed.
+Lemma troot_tmirror2'' t : troot (tmirror (tmirror t)) = troot t.
+Proof. by rewrite troot_tmirror troot_tmirror. Qed.
 
 (** Alternatively, we can use the [!] flag to rewrite with a lemma as many times
     as possible: *)
 
-Lemma tcolor_tmirror2''' t : tcolor (tmirror (tmirror t)) = tcolor t.
-Proof. by rewrite !tcolor_tmirror. Qed.
+Lemma troot_tmirror2''' t : troot (tmirror (tmirror t)) = troot t.
+Proof. by rewrite !troot_tmirror. Qed.
 
 (** Finally, we can prefix a lemma with a minus sign [-] to indicate that we
     want to rewrite in the opposite direction: *)
 
-Lemma tcolor_tmirror2'''' t : tcolor (tmirror (tmirror t)) = tcolor t.
+Lemma troot_tmirror2'''' t : troot (tmirror (tmirror t)) = troot t.
 Proof.
 
-(* Replace [tcolor t] by [tcolor (tmirror t)] *)
-rewrite -(tcolor_tmirror t).
+(* Replace [troot t] by [troot (tmirror t)] *)
+rewrite -(troot_tmirror t).
 
-(* Replace [tcolor (tmirror t)] by [tcolor (tmirror (tmirror t))] *)
-rewrite -(tcolor_tmirror (tmirror t)).
+(* Replace [troot (tmirror t)] by [troot (tmirror (tmirror t))] *)
+rewrite -(troot_tmirror (tmirror t)).
 
 by [].
 Qed.
@@ -372,7 +380,7 @@ Proof.
     [IH1] and [IH2] stand for the induction hypotheses that correspond to [t1]
     and [t2]. Notice that we use the [/=] flag to simplify both subgoals. *)
 
-elim: t => [|c t1 IH1 x t2 IH2] /=.
+elim: t => [|t1 IH1 x t2 IH2] /=.
 
 (** The first subgoal corresponds to the [t = Leaf] case, and can be solved by
     Coq automatically. *)
@@ -400,7 +408,7 @@ Qed.
 
 Lemma tmirrorK' t : tmirror (tmirror t) = t.
 Proof.
-elim: t => [|c t1 IH1 x t2 IH2] // /=.
+elim: t => [|t1 IH1 x t2 IH2] // /=.
 by rewrite IH1 IH2.
 Qed.
 
@@ -408,7 +416,7 @@ Qed.
 
 Lemma tmirrorK'' t : tmirror (tmirror t) = t.
 Proof.
-elim: t => [|c t1 IH1 x t2 IH2] //=.
+elim: t => [|t1 IH1 x t2 IH2] //=.
 by rewrite IH1 IH2.
 Qed.
 
@@ -418,7 +426,7 @@ Qed.
     leads to the following proof: *)
 
 Lemma tmirrorK''' t : tmirror (tmirror t) = t.
-Proof. by elim: t => [|/= c t1 -> x t2 ->]. Qed.
+Proof. by elim: t => [|/= t1 -> x t2 ->]. Qed.
 
 (** Notice that, before rewriting with the induction hypotheses in the [Node]
     branch, we perform a simplification step with [/=], so that Coq can find the
@@ -460,7 +468,7 @@ Definition cancel' (S R : Type) (f : S -> R) (g : R -> S) : Prop :=
     the beginning of the file, we don't have to provide them most of the
     time. For instance: *)
 
-Lemma tmirrorK'''' : cancel (@tmirror T) (@tmirror T).
+Lemma tmirrorK'''' : cancel tmirror tmirror.
 Proof.
 
 (** To understand what's going on, it is sometimes useful to unfold the
@@ -476,7 +484,7 @@ rewrite /cancel.
     analysis. Of course, we can give [x] any name we like: *)
 
 move=> t.
-by elim: t => [|/= c t1 -> x t2 ->].
+by elim: t => [|/= t1 -> x t2 ->].
 Qed.
 
 (** In situations like this, where we want our tactic to act on the first
@@ -485,8 +493,8 @@ Qed.
     [case] and [elim] always act implicitly on the first universally quantified
     value in our goal, in stack-like fashion. *)
 
-Lemma tmirrorK''''' : involutive (@tmirror T).
-Proof. by elim=> [|/= c t1 -> x t2 ->]. Qed.
+Lemma tmirrorK''''' : involutive tmirror.
+Proof. by elim=> [|/= t1 -> x t2 ->]. Qed.
 
 (** Notice that we have used [involutive tmirror] instead of [tcancel tmirror
     tmirror]. [involutive foo] is defined exactly as [cancel foo foo].
@@ -496,7 +504,7 @@ Proof. by elim=> [|/= c t1 -> x t2 ->]. Qed.
     context back in the goal. In this sense, it is the inverse of the [=>]
     introduction operator. For instance: *)
 
-Lemma tmirrorK'''''' : involutive (@tmirror T).
+Lemma tmirrorK'''''' : involutive tmirror.
 Proof.
 move=> t.
 move: t.
@@ -514,7 +522,7 @@ Proof.
 
 (** We could try to prove this by induction: *)
 
-elim: t => [|/= c t1 -> x t2 ->] //.
+elim: t => [|/= t1 -> x t2 ->] //.
 
 (** Here, we see that Coq was able to discharge the base case by itself, with
     [//]. However, it was not able to get rid of the second one. Indeed, we can
@@ -725,7 +733,7 @@ Compute match true with true => 1 | false => 2 end.
     [||] and [~~] for the "and", "or", and "not" functions. *)
 
 Check true && true.
-Check true || ~~ false.
+Check (true || ~~ false).
 
 (** The [case] tactic can be used to do a proof by cases on members of any
     inductively defined type, including [bool]. *)
@@ -1117,10 +1125,10 @@ End Rev.
     our definition uses [if] expressions, which are defined in the obvious way
     in terms of [match]. *)
 
-Fixpoint tmember (x : nat) (t : tree nat) : bool :=
+Fixpoint tmember (x : nat) (t : tree) : bool :=
   match t with
   | Leaf => false
-  | Node _ t1 x' t2 =>
+  | Node t1 x' t2 =>
     if x < x' then tmember x t1
     else if x' < x then tmember x t2
     else true
@@ -1130,10 +1138,10 @@ Fixpoint tmember (x : nat) (t : tree nat) : bool :=
     function, which lists all elements that appear in the tree from left to
     right. *)
 
-Fixpoint telems T (t : tree T) : seq T :=
+Fixpoint telems (t : tree) : seq nat :=
   match t with
   | Leaf => [::]
-  | Node _ t1 x t2 => telems t1 ++ x :: telems t2
+  | Node t1 x t2 => telems t1 ++ x :: telems t2
   end.
 
 (** In order to fully specify the behavior of [tmember], we would have to reason
@@ -1146,7 +1154,7 @@ Proof.
 
 (** It seems a good idea to try to prove this result by induction. *)
 
-elim: t => [|c t1 IH1 x' t2 IH2] /=.
+elim: t => [|t1 IH1 x' t2 IH2] /=.
 
 (** In the first case ([t = Leaf]), we have to prove that [x] occurs in the
     empty sequence (that is, [telems Leaf]), assuming that [tmember x Leaf] is

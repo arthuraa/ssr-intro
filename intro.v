@@ -65,7 +65,7 @@
 
     The next line imports ssreflect libraries that we use in this file. *)
 
-From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
+From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype.
 
 (** (If you encounter warning messages when importing these files, don't worry:
     they are probably harmless. Ssreflect redefines some of the basic Coq
